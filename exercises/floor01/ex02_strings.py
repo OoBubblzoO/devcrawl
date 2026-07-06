@@ -21,7 +21,7 @@ depth = 2
 #   Crumb | HP 24/30 | Floor 2
 #
 # TODO:
-hud_line = ...
+hud_line = f"{player_name} | HP {player_hp}/{player_max_hp} | Floor {depth}"
 
 # --- Part 2: methods ---------------------------------------------------------
 # The dungeon announcer SHOUTS. Take the quiet message below and produce
@@ -29,7 +29,7 @@ hud_line = ...
 
 quiet = "a wild rat approaches"
 # TODO:
-loud = ...
+loud = quiet.upper()
 
 # --- Part 3: spot the trap ---------------------------------------------------
 # Someone tried to build a damage popup by adding a number to a string and
@@ -39,4 +39,4 @@ loud = ...
 damage = 7
 # broken:  popup = "You take " + damage + " damage!"
 # TODO — same text, but working:
-popup = ...
+popup = f"You take {damage} damage!"
