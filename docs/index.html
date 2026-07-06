@@ -166,6 +166,7 @@ table.cheat td:first-child{font-family:var(--font-mono);color:var(--torch);white
     <nav id="nav">
       <a href="#/" data-nav="home">Descent</a>
       <a href="#/tracks" data-nav="tracks">Tracks</a>
+      <a href="#/git" data-nav="git">Git</a>
       <a href="#/sync" data-nav="sync">Sync</a>
     </nav>
     <div class="hud" id="hud"></div>
@@ -761,6 +762,67 @@ function viewSync(){
   });
 }
 
+function viewGit(){
+  setNav("git");
+  app.innerHTML = `
+    <div style="padding:44px 0 10px;max-width:760px">
+    <div class="eyebrow glow">field manual</div>
+    <h1>Git, from zero</h1>
+    <p class="lead">Git is a save system for code. Not one save slot — a full history of snapshots you can return to, compare, and carry between machines. DEVCRAWL leans on three ideas: the <b>commit</b>, the <b>remote</b>, and the <b>pull/push</b> loop.</p>
+
+    <h3>The mental model</h3>
+    <p style="color:var(--muted);font-size:.94rem">Your project has three layers. Files you're editing live in the <b>working directory</b>. When a change is ready, you <b>stage</b> it (git add) — putting it in the box. Then you <b>commit</b> — sealing the box with a message and a timestamp. Commits are permanent snapshots; everything before a commit is just loose paper.</p>
+    <pre><code>working directory  →  staging area  →  history (commits)
+   (editing)           git add           git commit</code></pre>
+    <p style="color:var(--muted);font-size:.94rem">GitHub is a <b>remote</b> — a copy of your history living on someone else's computer. <code>push</code> uploads your new commits; <code>pull</code> downloads commits you don't have yet. That's the entire sync story.</p>
+
+    <h3>The commands you'll actually use</h3>
+    <table class="cheat">
+      <tr><td>git status</td><td>what's changed, what's staged. Run it constantly — it's free</td></tr>
+      <tr><td>git add -A</td><td>stage everything that changed</td></tr>
+      <tr><td>git add file.py</td><td>stage just one file</td></tr>
+      <tr><td>git commit -m "msg"</td><td>snapshot the staged changes with a message</td></tr>
+      <tr><td>git push</td><td>upload your commits to GitHub</td></tr>
+      <tr><td>git pull</td><td>download commits from GitHub you don't have</td></tr>
+      <tr><td>git log --oneline</td><td>the history, one commit per line</td></tr>
+      <tr><td>git diff</td><td>exactly what changed since the last commit</td></tr>
+      <tr><td>git restore file.py</td><td>throw away uncommitted changes to a file (careful!)</td></tr>
+      <tr><td>git clone &lt;url&gt;</td><td>copy a repo from GitHub to a new machine</td></tr>
+    </table>
+    <p style="color:var(--muted);font-size:.9rem"><code>dojo.py</code> runs add + commit for you when tests go green — but knowing what it's doing under the hood is the point. Peek at the <code>commit()</code> function in dojo.py sometime; it's ~10 lines.</p>
+
+    <h3>Two machines, one save</h3>
+    <p style="color:var(--muted);font-size:.94rem">The rule is a ritual: <b>pull when you sit down, push when you stand up.</b></p>
+    <pre><code># first time on a new machine
+git clone https://github.com/&lt;you&gt;/&lt;repo&gt;.git
+cd devcrawl
+
+# every session, anywhere
+git pull                      # ① get the latest save
+# … lessons, exercises, dojo.py done …
+python3 dojo.py push          # ② send the save back up</code></pre>
+    <p style="color:var(--muted);font-size:.94rem">Forget step ① and commit anyway? Git will refuse your push and tell you to pull first — annoying but harmless. Since you're the only writer and you edit different exercise files at different times, real conflicts will be rare. If one ever happens, git marks the conflicting lines in the file; you keep the version you want, delete the markers, commit.</p>
+
+    <div class="callout"><b>Good habit</b>Commit messages are notes to future-you. "clear exercise 2-1" (what dojo writes) beats "stuff" and "asdf". On the job, your commit history is part of your work product — recruiters and leads really do read it.</div>
+
+    <h3>Using VS Code (recommended setup)</h3>
+    <ul class="plain">
+      <li><b>Open the repo:</b> File → Open Folder → your devcrawl folder</li>
+      <li><b>Built-in terminal:</b> <code>Ctrl+\`</code> (backtick) — every <code>dojo.py</code> command runs there, same as any terminal</li>
+      <li><b>Source Control panel</b> (branch icon, left sidebar): a visual git status. Staged/unstaged changes, diffs on click, commit box at the top — it's running the same commands from the table above</li>
+      <li><b>Split view:</b> exercise file on the left, <code>Ctrl+\`</code> terminal below — fix, <code>dojo.py check</code>, repeat without switching windows</li>
+      <li>Install the <b>Python extension</b> (Microsoft) for syntax highlighting and inline error squiggles</li>
+    </ul>
+
+    <div class="card" style="margin-top:26px"><span class="pill outline">coming later</span>
+      <h3 style="margin-top:12px">Git exercises</h3>
+      <p style="color:var(--muted);font-size:.9rem">A future floor-style set: break a repo on purpose, read the log to find where, restore, branch, merge a conflict. When you want it, ask Claude to generate a <code>gitgym/</code> folder in this repo following the exercise format.</p>
+    </div>
+
+    <div class="crumbline">${CRUMB_SVG(30)}<span><b style="color:var(--torch)">Crumb</b> squeaks: pull when you sit down, push when you stand up. Say it until it's muscle memory.</span></div>
+    </div>`;
+}
+
 /* ============================================================
    ROUTER
 ============================================================ */
@@ -772,6 +834,7 @@ function route(){
   if(h==="#/"||h==="#") return viewHome();
   if(h==="#/tracks") return viewTracks();
   if(h==="#/sync") return viewSync();
+  if(h==="#/git") return viewGit();
   if(m = h.match(/^#\/track\/(\w+)$/)) return viewTrackOutline(m[1]);
   if(m = h.match(/^#\/floor\/(\d+)$/)) return viewFloor(+m[1]);
   if(m = h.match(/^#\/lesson\/([\d.]+)$/)) return viewLesson(m[1]);
