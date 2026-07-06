@@ -16,13 +16,10 @@ Save: python3 dojo.py done 1-1
 #   - Names should describe the value (single letters are a trap)
 # The VALUES must stay the same — only rename.
 
-# TODO: rename `1st_weapon` to `first_weapon`  (delete this line when done)
 # 1st_weapon = "rusty sword"
-first_weapon = ...  # <- assign "rusty sword"
+first_weapon = "rusty sword"  # <- assign "rusty sword"
 
-# TODO: rename `x` to something meaningful: `torch_count`
-x = 3
-torch_count = ...  # <- assign the same value x had, then delete the x line
+torch_count = 3  # <- assign the same value x had, then delete the x line
 
 
 # --- Part 2: create your character ------------------------------------------
@@ -33,10 +30,10 @@ torch_count = ...  # <- assign the same value x had, then delete the x line
 #   is_alive     -> the boolean True   (careful: True, not "True")
 
 # TODO: your four variables here
-player_name = ...
-player_hp = ...
-player_level = ...
-is_alive = ...
+player_name = "Cheeto"
+player_hp = 30
+player_level = 1
+is_alive = True
 
 
 # --- Part 3: reassignment ----------------------------------------------------
@@ -44,3 +41,5 @@ is_alive = ...
 # by REUSING the variable (player_hp = player_hp + 5), don't just write 35.
 
 # TODO: heal the player by 5 here
+
+player_hp = player_hp + 5
