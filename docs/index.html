@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DEVCRAWL — descend, debug, survive</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0D0A14; --stone:#16111F; --surface:#1C1529; --raised:#241B36;
+  --ink:#EFEAF8; --muted:#9A8FB8; --faint:#6B6186;
+  --glow:#E93CAC; --glow-dim:#8f2a6c; --torch:#F0A33C; --green:#46E8A4;
+  --line:#2C2340; --code-bg:#120E1C;
+  --font-display:'Unbounded',sans-serif; --font-body:'IBM Plex Sans',sans-serif; --font-mono:'IBM Plex Mono',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:16px;line-height:1.65;min-height:100vh}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(ellipse 80% 50% at 50% -10%, rgba(233,60,172,.07), transparent 60%),
+             radial-gradient(ellipse 60% 40% at 85% 100%, rgba(240,163,60,.05), transparent 60%);}
+a{color:var(--glow);text-decoration:none}
+a:hover{text-decoration:underline}
+button{font-family:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--torch);outline-offset:2px;border-radius:4px}
+
+/* ---------- shell ---------- */
+.shell{position:relative;z-index:1;max-width:1080px;margin:0 auto;padding:0 20px 96px}
+header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:20px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.wordmark{font-family:var(--font-display);font-weight:700;font-size:1.05rem;letter-spacing:.14em;color:var(--ink)}
+.wordmark a{color:var(--ink)}
+.wordmark a:hover{text-decoration:none}
+.wordmark .crawl{color:var(--glow)}
+nav{display:flex;gap:4px;flex-wrap:wrap}
+nav a{font-family:var(--font-mono);font-size:.8rem;letter-spacing:.06em;color:var(--muted);padding:7px 12px;border-radius:6px;text-transform:uppercase}
+nav a:hover{color:var(--ink);text-decoration:none;background:var(--surface)}
+nav a.active{color:var(--torch);background:var(--surface)}
+.hud{font-family:var(--font-mono);font-size:.78rem;color:var(--muted)}
+.hud b{color:var(--torch);font-weight:500}
+
+/* ---------- shared bits ---------- */
+.eyebrow{font-family:var(--font-mono);font-size:.72rem;letter-spacing:.18em;text-transform:uppercase;color:var(--faint)}
+.eyebrow.glow{color:var(--glow)}
+h1{font-family:var(--font-display);font-weight:700;font-size:clamp(1.6rem,4.5vw,2.6rem);line-height:1.15;letter-spacing:.01em;margin:10px 0 14px}
+h2{font-family:var(--font-display);font-weight:500;font-size:1.15rem;letter-spacing:.03em;margin:0 0 14px}
+h3{font-size:1.02rem;font-weight:600;margin:26px 0 8px}
+.lead{color:var(--muted);max-width:60ch}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:22px}
+.pill{display:inline-block;font-family:var(--font-mono);font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;padding:3px 9px;border-radius:99px;border:1px solid var(--line);color:var(--muted)}
+.pill.ready{color:var(--green);border-color:rgba(70,232,164,.35)}
+.pill.outline{color:var(--torch);border-color:rgba(240,163,60,.35)}
+.pill.locked{color:var(--faint)}
+.pill.legendary{color:var(--glow);border-color:rgba(233,60,172,.4)}
+.btn{display:inline-block;background:var(--glow);color:#14000d;font-weight:600;font-size:.92rem;border:none;border-radius:8px;padding:11px 20px}
+.btn:hover{filter:brightness(1.1);text-decoration:none}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.btn.ghost:hover{border-color:var(--glow);filter:none}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.done{background:var(--green);color:#02180e}
+code{font-family:var(--font-mono);font-size:.88em;background:var(--code-bg);border:1px solid var(--line);border-radius:5px;padding:1px 6px;color:#F2C4E1}
+pre{background:var(--code-bg);border:1px solid var(--line);border-radius:10px;padding:16px 18px;overflow-x:auto;margin:14px 0;line-height:1.55}
+pre code{background:none;border:none;padding:0;font-size:.85rem;color:#DCD3EE}
+.callout{border-left:3px solid var(--torch);background:rgba(240,163,60,.06);border-radius:0 10px 10px 0;padding:13px 16px;margin:16px 0;font-size:.94rem}
+.callout.trap{border-color:var(--glow);background:rgba(233,60,172,.06)}
+.callout b{font-family:var(--font-mono);font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;display:block;margin-bottom:4px}
+.callout.trap b{color:var(--glow)}
+.callout:not(.trap) b{color:var(--torch)}
+.mono{font-family:var(--font-mono)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:760px){.grid2{grid-template-columns:1fr}}
+
+/* ---------- descent map (signature) ---------- */
+.hero{display:grid;grid-template-columns:340px 1fr;gap:34px;padding:44px 0 20px;align-items:start}
+@media(max-width:860px){.hero{grid-template-columns:1fr}}
+.descent{position:relative;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:linear-gradient(180deg,var(--stone),#0B0812)}
+.descent .surface-label{font-family:var(--font-mono);font-size:.68rem;letter-spacing:.2em;text-transform:uppercase;color:var(--faint);text-align:center;padding:10px 0;border-bottom:1px dashed var(--line)}
+.stratum{display:flex;align-items:center;gap:14px;padding:11px 18px;border-bottom:1px solid rgba(44,35,64,.6);position:relative;color:inherit}
+.stratum:hover{text-decoration:none;background:var(--surface)}
+.stratum:last-child{border-bottom:none}
+.stratum .fnum{font-family:var(--font-display);font-weight:700;font-size:1.05rem;width:34px;color:var(--faint);flex-shrink:0}
+.stratum .fname{font-size:.86rem;color:var(--muted);line-height:1.3}
+.stratum .fstate{margin-left:auto;font-family:var(--font-mono);font-size:.68rem;color:var(--faint);flex-shrink:0}
+.stratum.cleared .fnum{color:var(--torch)}
+.stratum.cleared{background:linear-gradient(90deg,rgba(240,163,60,.07),transparent 70%)}
+.stratum.cleared .fstate{color:var(--torch)}
+.stratum.current .fnum{color:var(--glow)}
+.stratum.current .fname{color:var(--ink)}
+.stratum.current{background:linear-gradient(90deg,rgba(233,60,172,.1),transparent 75%)}
+.stratum.locked-f{opacity:.55}
+.crumb{width:26px;height:20px;flex-shrink:0;margin-left:auto}
+.stratum.current .fstate{display:none}
+@media(prefers-reduced-motion:no-preference){
+  .crumb{animation:bob 2.4s ease-in-out infinite}
+  @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+}
+
+/* ---------- lists ---------- */
+.floor-card{display:block;color:inherit;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin-bottom:12px}
+.floor-card:hover{text-decoration:none;border-color:var(--glow-dim)}
+.floor-card .top{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+.floor-card .fnum{font-family:var(--font-display);font-weight:700;color:var(--torch);font-size:1.1rem}
+.floor-card .ftitle{font-weight:600;font-size:1.02rem}
+.floor-card p{color:var(--muted);font-size:.9rem;margin-top:6px}
+.lesson-row{display:flex;align-items:center;gap:12px;padding:13px 16px;border:1px solid var(--line);border-radius:10px;margin-bottom:9px;background:var(--surface);color:inherit}
+.lesson-row:hover{text-decoration:none;border-color:var(--glow-dim)}
+.lesson-row .check{width:20px;height:20px;border-radius:50%;border:1.5px solid var(--faint);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.7rem}
+.lesson-row.done .check{border-color:var(--green);color:var(--green);background:rgba(70,232,164,.1)}
+.lesson-row .lid{font-family:var(--font-mono);font-size:.75rem;color:var(--faint);width:34px;flex-shrink:0}
+.lesson-row .lname{font-size:.94rem}
+.lesson-row .ltime{margin-left:auto;font-family:var(--font-mono);font-size:.72rem;color:var(--faint)}
+.ex-row{display:flex;align-items:center;gap:12px;padding:12px 16px;border:1px dashed var(--line);border-radius:10px;margin-bottom:9px;font-size:.9rem}
+.ex-row.done{border-style:solid;border-color:rgba(70,232,164,.4)}
+.ex-row .check{width:18px;height:18px;border-radius:4px;border:1.5px solid var(--faint);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.65rem}
+.ex-row.done .check{border-color:var(--green);color:var(--green)}
+.ex-row code{font-size:.8rem}
+.ex-row .cmd{margin-left:auto;color:var(--faint);font-family:var(--font-mono);font-size:.72rem}
+@media(max-width:700px){.ex-row .cmd{display:none}}
+
+/* ---------- quiz ---------- */
+.quiz{border:1px solid var(--line);border-radius:12px;margin:22px 0;overflow:hidden}
+.quiz .qhead{font-family:var(--font-mono);font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;color:var(--glow);padding:12px 18px;border-bottom:1px solid var(--line);background:rgba(233,60,172,.05)}
+.quiz .qbody{padding:18px}
+.quiz .qtext{font-weight:500;margin-bottom:6px}
+.quiz pre{margin:12px 0}
+.opt{display:block;width:100%;text-align:left;background:var(--raised);border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:11px 14px;margin:8px 0;font-size:.92rem;font-family:var(--font-mono)}
+.opt:hover{border-color:var(--glow-dim)}
+.opt.correct{border-color:var(--green);background:rgba(70,232,164,.1)}
+.opt.wrong{border-color:var(--glow);background:rgba(233,60,172,.08);opacity:.75}
+.opt:disabled{cursor:default}
+.why{display:none;font-size:.9rem;color:var(--muted);border-top:1px dashed var(--line);margin-top:12px;padding-top:12px}
+.why.show{display:block}
+.why b{color:var(--green);font-family:var(--font-mono);font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;display:block;margin-bottom:4px}
+
+/* ---------- misc ---------- */
+.statgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:18px 0}
+@media(max-width:560px){.statgrid{grid-template-columns:1fr}}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px}
+.stat .n{font-family:var(--font-display);font-weight:700;font-size:1.7rem;color:var(--torch)}
+.stat .n.pink{color:var(--glow)}
+.stat .l{font-family:var(--font-mono);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin-top:2px}
+.crumbline{display:flex;gap:12px;align-items:flex-start;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin:20px 0;font-size:.92rem;color:var(--muted)}
+.crumbline svg{flex-shrink:0;margin-top:2px}
+.tracks-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;margin-top:20px}
+.track-card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:20px;color:inherit;display:block}
+.track-card:hover{text-decoration:none;border-color:var(--glow-dim)}
+.track-card .tname{font-family:var(--font-display);font-weight:500;font-size:1.02rem;margin:8px 0 6px}
+.track-card p{font-size:.86rem;color:var(--muted)}
+.lesson-nav{display:flex;justify-content:space-between;gap:12px;margin-top:34px;flex-wrap:wrap}
+footer{border-top:1px solid var(--line);margin-top:70px;padding-top:22px;font-family:var(--font-mono);font-size:.75rem;color:var(--faint);display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--raised);border:1px solid var(--green);color:var(--ink);border-radius:10px;padding:12px 20px;font-size:.9rem;z-index:50;opacity:0;pointer-events:none;transition:opacity .25s}
+.toast.show{opacity:1}
+ul.plain{margin:10px 0 10px 22px}
+ul.plain li{margin:5px 0;color:var(--muted)}
+ul.plain li b{color:var(--ink);font-weight:600}
+table.cheat{width:100%;border-collapse:collapse;font-size:.88rem;margin:14px 0}
+table.cheat td{border:1px solid var(--line);padding:9px 12px}
+table.cheat td:first-child{font-family:var(--font-mono);color:var(--torch);white-space:nowrap;font-size:.8rem}
+</style>
+</head>
+<body>
+<div class="shell">
+  <header>
+    <div class="wordmark"><a href="#/">DEV<span class="crawl">CRAWL</span></a></div>
+    <nav id="nav">
+      <a href="#/" data-nav="home">Descent</a>
+      <a href="#/tracks" data-nav="tracks">Tracks</a>
+      <a href="#/sync" data-nav="sync">Sync</a>
+    </nav>
+    <div class="hud" id="hud"></div>
+  </header>
+  <main id="app"></main>
+  <footer>
+    <span>DEVCRAWL · built with Claude</span>
+    <span>your repo is your save file</span>
+  </footer>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   CRUMB — the guinea pig familiar (inline SVG)
+============================================================ */
+const CRUMB_SVG = (size=26, color='var(--torch)') => `
+<svg class="crumb" width="${size}" height="${Math.round(size*0.77)}" viewBox="0 0 26 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Crumb the guinea pig">
+  <path d="M3.5 13.5 C3.5 7.5 8 4 13 4 C18.5 4 23 7 23 12 C23 16 20 18.5 14.5 18.5 L8.5 18.5 C5.5 18.5 3.5 16.5 3.5 13.5 Z" fill="${color}"/>
+  <ellipse cx="19.4" cy="5.6" rx="2.3" ry="2.6" fill="${color}"/>
+  <circle cx="19.8" cy="9.6" r="1.1" fill="#0D0A14"/>
+  <circle cx="23.1" cy="11.8" r="0.8" fill="#0D0A14"/>
+</svg>`;
+
+/* ============================================================
+   CURRICULUM DATA
+============================================================ */
+const PY_FLOORS = [
+{
+  num:1, id:"f1", title:"The Entrance", theme:"Variables, strings & numbers", status:"ready",
+  blurb:"Every crawl starts at character creation. Learn how Python names things, builds text, and does stat math — then roll your hero.",
+  project:{id:"1-P", name:"THE ROLL — character creator", file:"exercises/floor01/project_character.py",
+    brief:"Build <code>make_character()</code>, <code>status_line()</code> and <code>level_up()</code> — the character dict every later floor will act on. Function skeletons are provided; you fill the bodies."},
+  exercises:[
+    {id:"1-1", file:"exercises/floor01/ex01_variables.py", goal:"Fix broken names, create your character's variables"},
+    {id:"1-2", file:"exercises/floor01/ex02_strings.py", goal:"Build the HUD line with f-strings"},
+    {id:"1-3", file:"exercises/floor01/ex03_numbers.py", goal:"Damage formulas, loot splits, turn parity"},
+  ],
+  lessons:[
+  {id:"1.1", title:"Variables & types", min:6, content:`
+<p>A variable is a <b>name bound to a value</b>. Python doesn't ask you to declare types — it looks at the value and knows:</p>
+<pre><code>player_name = "Crumb"    # str   — text
+player_hp   = 30         # int   — whole number
+crit_chance = 0.05       # float — decimal
+is_alive    = True       # bool  — True or False (capitalized!)</code></pre>
+<p>Ask a value its type with <code>type(player_hp)</code>. Rebinding is just assigning again — <code>player_hp = player_hp - 7</code> reads the old value, computes, and binds the name to the result.</p>
+<div class="callout"><b>Good habit</b>Names are for the next person who reads the code — usually future-you at 1am. <code>torch_count</code> beats <code>x</code> every single time. Rule: if you'd have to scroll up to remember what a name means, the name is wrong.</div>
+<div class="callout trap"><b>Trap</b><code>"True"</code> with quotes is a <em>string</em>, not a boolean. It will slip through your code silently until an <code>if</code> statement treats the string "False" as truthy and your dead player keeps walking. Type confusion is the #1 beginner bug.</div>`,
+  quiz:[
+    {q:"Which variable name will crash Python?", opts:["health_potion = 2","2nd_sword = \"steel\"","isAlive = True","_hidden = 9"], a:1, why:"Names can't start with a digit. `2nd_sword` is a SyntaxError. The others are all legal (even if snake_case like `is_alive` is the Python style)."},
+    {q:"After this runs, what is hp?", code:"hp = 10\nhp = hp + 5\nhp = hp * 2", opts:["10","15","30","25"], a:2, why:"Each line rebinds `hp` using its current value: 10 → 15 → 30. Reading assignment right-to-left ('compute the right side, then bind the name') makes this obvious."},
+  ]},
+  {id:"1.2", title:"Strings & f-strings", min:7, content:`
+<p>A roguelike is mostly a machine that prints strings: HUD lines, damage popups, ominous whispers. The clean way to build them is the <b>f-string</b> — put an <code>f</code> before the quote, and anything in <code>{braces}</code> is evaluated and dropped in:</p>
+<pre><code>name, hp, max_hp = "Crumb", 24, 30
+hud = f"{name} | HP {hp}/{max_hp}"     # "Crumb | HP 24/30"</code></pre>
+<p>Strings come with methods — functions that live on the value itself:</p>
+<pre><code>"a rat appears".upper()      # "A RAT APPEARS"
+"  loot  ".strip()           # "loot"
+"dark hallway".replace("dark", "strobing")</code></pre>
+<div class="callout trap"><b>Trap</b><code>"You take " + damage + " damage!"</code> crashes with a <code>TypeError</code> when <code>damage</code> is a number — Python refuses to glue str and int together. The fix is not <code>str(damage)</code> sprinkled everywhere; it's using f-strings from the start.</div>
+<div class="callout"><b>Good habit</b>Never hardcode values into display strings. <code>f"HP {hp}/30"</code> is a bug waiting for the day max HP changes. Interpolate variables, always.</div>`,
+  quiz:[
+    {q:"What does this print?", code:"depth = 3\nprint(f\"Floor {depth + 1}\")", opts:["Floor {depth + 1}","Floor 4","Floor 3 + 1","SyntaxError"], a:1, why:"Braces in an f-string hold full expressions, not just names — `depth + 1` evaluates to 4 before being inserted."},
+    {q:"What's wrong here?", code:"gold = 47\nmsg = \"You loot \" + gold + \" coins\"", opts:["Nothing, prints fine","gold needs to be a float","TypeError: can't concatenate str and int","msg needs to be uppercase"], a:2, why:"`+` between a string and an int is a TypeError. An f-string — f\"You loot {gold} coins\" — handles the conversion for you."},
+  ]},
+  {id:"1.3", title:"Numbers & operators", min:6, content:`
+<p>Stat math <em>is</em> game design. Beyond <code>+ - *</code>, three operators do the heavy lifting in games:</p>
+<pre><code>7 / 2    # 3.5   true division — ALWAYS a float
+7 // 2   # 3     floor division — drops the remainder
+7 % 2    # 1     modulo — the remainder itself
+2 ** 3   # 8     power</code></pre>
+<p>Splitting 47 gold between 4 party members? <code>47 // 4</code> coins each, <code>47 % 4</code> left in the pot. Whose turn is it? <code>turn % 2</code> alternates 0,1,0,1 forever — that's turn order in one expression.</p>
+<div class="callout trap"><b>Trap</b><code>/</code> always returns a float, even for <code>10 / 2</code> (you get <code>5.0</code>). If a stat must stay a whole number — HP, gold, array indexes — use <code>//</code>. Float HP is how you end up displaying <code>HP 23.999999999/30</code>.</div>
+<div class="callout"><b>Good habit</b>Name your formula inputs. <code>damage = base_damage + strength_mod * 2</code> documents itself; <code>d = 6 + 3 * 2</code> is a magic-number soup you'll curse later. Constants get SHOUTING_CASE: <code>STARTING_HP = 30</code>.</div>`,
+  quiz:[
+    {q:"An 8-bit rave anthem loops every 4 beats. On beat 14, which beat of the loop are you on?", code:"14 % 4  # ?", opts:["3","2","3.5","4"], a:1, why:"14 % 4 is the remainder of 14 ÷ 4 → 2. Modulo is the 'wrap around' operator — loops, cycles, turn order, BPM grids."},
+    {q:"Which expression gives whole gold coins per player, no fractions?", opts:["47 / 4","47 % 4","47 // 4","47 ** 4"], a:2, why:"// floors the result to a whole int: 11. Plain / would give 11.75 — and nobody wants three-quarters of a coin."},
+  ]},
+  {id:"1.4", title:"Reading tracebacks (your torch)", min:7, content:`
+<p>Errors are not the dungeon punishing you — they're the dungeon <b>telling you exactly where the trap is</b>. A traceback reads bottom-up:</p>
+<pre><code>Traceback (most recent call last):
+  File "game.py", line 12, in &lt;module&gt;
+    print("HP: " + hp)
+TypeError: can only concatenate str (not "int") to str</code></pre>
+<ul class="plain">
+<li><b>Last line first:</b> the error type and message. This names the problem.</li>
+<li><b>Line above:</b> the exact file and line number where it blew up.</li>
+<li><b>Everything above that:</b> the chain of calls that led there.</li>
+</ul>
+<p>The same skill applies to failing tests. When <code>dojo.py check</code> shows red, pytest prints the assertion that failed <em>and</em> a message written to point you at the fix. Read it. The answer is usually right there.</p>
+<div class="callout"><b>Good habit</b>This is the QA mindset that transfers straight to a paycheck: an error message is <em>data</em>. Read it fully before touching code. Beginners who guess-and-rerun take 10x longer than beginners who read.</div>`,
+  quiz:[
+    {q:"pytest says: AssertionError: player_hp should end at 35: start at 30, then player_hp = player_hp + 5. What do you do first?", opts:["Delete the test, it's wrong","Rerun it, might pass this time","Read the message — it literally contains the fix","Rewrite the whole file"], a:2, why:"Test messages in DEVCRAWL (and in good real-world suites) are written to diagnose. Reading before editing is the habit that separates debuggers from guessers."},
+    {q:"A traceback's MOST useful line is usually…", opts:["The first line","The last line (error type + message)","The line count","None, tracebacks are noise"], a:1, why:"Bottom-up: last line names the problem, the line above locates it. Start there every time."},
+  ]},
+]},
+{
+  num:2, id:"f2", title:"The Sparring Hall", theme:"Booleans, branching & loops", status:"ready",
+  blurb:"Decisions and repetition — the two ingredients of behavior. Biscuit the sparring rat awaits. A game IS a loop; time to write one.",
+  project:{id:"2-P", name:"RAT FIGHT — the combat loop", file:"exercises/floor02/project_rat_fight.py",
+    brief:"Build <code>attack()</code>, <code>is_defeated()</code>, then compose them into <code>fight()</code> — a full turn-based combat loop. Deterministic on purpose: deterministic combat is <em>testable</em> combat."},
+  exercises:[
+    {id:"2-1", file:"exercises/floor02/ex01_booleans.py", goal:"State checks: hurt, critical, in darkness"},
+    {id:"2-2", file:"exercises/floor02/ex02_branching.py", goal:"Crit tables, doors, and the HP clamp"},
+    {id:"2-3", file:"exercises/floor02/ex03_loops.py", goal:"Turns-to-kill, XP curves, torch countdown"},
+  ],
+  lessons:[
+  {id:"2.1", title:"Booleans & comparisons", min:6, content:`
+<p>Every decision a game makes reduces to <code>True</code> or <code>False</code>. Comparisons produce booleans:</p>
+<pre><code>hp &lt; max_hp        # is hurt?
+roll == 20         # nat 20?  (== compares; = assigns!)
+depth &gt;= 5         # deep enough for elites?</code></pre>
+<p><code>and</code>, <code>or</code>, <code>not</code> combine them:</p>
+<pre><code>can_open  = has_key and door_locked
+in_danger = is_critical or is_cursed
+in_dark   = not torch_lit and depth &gt; 1</code></pre>
+<div class="callout trap"><b>Trap</b><code>if hp == 0</code> is a landmine. A 9-damage hit on 5 HP leaves −4, the check never fires, and your zombie player keeps walking. The robust check is always <code>hp &lt;= 0</code>. Boundary bugs like this are half of all game bugs — and exactly what QA engineers are paid to catch.</div>
+<div class="callout"><b>Good habit</b>Name your booleans as questions: <code>is_alive</code>, <code>has_key</code>, <code>can_afford</code>. Then <code>if is_alive and has_key:</code> reads like English.</div>`,
+  quiz:[
+    {q:"What does this evaluate to?", code:"hp = -3\nfatal = hp == 0", opts:["True","False","-3","Error"], a:1, why:"hp is -3, and -3 == 0 is False — the overkill bug in the wild. hp <= 0 catches it."},
+    {q:"Player has the key, door is unlocked. What is `has_key and door_locked`?", opts:["True","False","\"unlocked\"","None"], a:1, why:"`and` needs BOTH sides true. door_locked is False, so the whole expression is False — no key logic needed for an open door."},
+  ]},
+  {id:"2.2", title:"if / elif / else", min:7, content:`
+<p>Branching turns booleans into behavior. Python takes the <b>first true branch</b> and skips the rest:</p>
+<pre><code>if roll == 20:
+    result = "crit"
+elif roll == 1:
+    result = "miss"
+elif roll &gt;= 11:
+    result = "hit"
+else:
+    result = "graze"</code></pre>
+<p>Order matters enormously. If <code>roll &gt;= 11</code> came first, a natural 20 would be swallowed by it and <code>"crit"</code> would be unreachable — no crash, no error, just a silently worse game. Put the most specific checks first.</p>
+<div class="callout"><b>Good habit</b>The clamp pattern. Healing must never exceed max HP:</p>
+<pre><code>hp = hp + 10
+if hp &gt; max_hp:
+    hp = max_hp</code></pre>
+Clamps guard every stat in every game you'll ever write. Forgetting one is how 38/30 HP screenshots end up on Reddit.</div>`,
+  quiz:[
+    {q:"What's the bug?", code:"if roll >= 11:\n    result = \"hit\"\nelif roll == 20:\n    result = \"crit\"", opts:["Syntax error","crit is unreachable — 20 matches >= 11 first","Nothing wrong","elif can't follow if"], a:1, why:"20 satisfies the first branch, so the crit branch never runs. Specific checks go before general ones. Unreachable branches are silent bugs — tests catch them, eyes often don't."},
+    {q:"hp=28, max=30, potion heals 10 with a clamp. Final hp?", opts:["38","30","28","10"], a:1, why:"28+10=38, then the clamp pulls it back to max: 30."},
+  ]},
+  {id:"2.3", title:"while — the game loop", min:7, content:`
+<p>A <code>while</code> loop repeats as long as its condition holds. This is the deepest structure in game programming, because <b>a game IS a while loop</b>:</p>
+<pre><code>while player_hp &gt; 0:
+    take_player_turn()
+    take_monster_turn()
+print("You died. The dungeon keeps your gold.")</code></pre>
+<p>Counting with while — how many hits to fell a monster:</p>
+<pre><code>turns = 0
+while monster_hp &gt; 0:
+    monster_hp -= damage      # -= is shorthand for hp = hp - damage
+    turns += 1</code></pre>
+<div class="callout trap"><b>Trap</b>The infinite loop. If nothing inside the loop moves the condition toward False — you forgot <code>turns += 1</code>, or damage is 0 — the loop runs forever and the program hangs. When your terminal freezes: Ctrl+C, then ask "what in this loop changes the condition?"</div>
+<div class="callout"><b>Good habit</b>Before writing a while loop, say its exit condition out loud. "This loop ends when the rat's HP reaches zero." If you can't finish that sentence, don't write the loop yet.</div>`,
+  quiz:[
+    {q:"How many times does this loop body run?", code:"hp = 10\nwhile hp > 0:\n    hp -= 4", opts:["2","3","4","Forever"], a:1, why:"10 → 6 → 2 → -2. Three iterations, then hp > 0 fails. Overkill on the last hit is fine — that's why we check <= 0, not == 0."},
+    {q:"Which loop runs forever?", opts:["while hp > 0: hp -= 1","while True: pass... with no break","while False: hp += 1","while hp != hp:"], a:1, why:"`while True` with no break or return never exits. (The last two never even start.) Every loop needs a path to the exit."},
+  ]},
+  {id:"2.4", title:"for & range", min:6, content:`
+<p><code>for</code> loops walk a sequence. With <code>range()</code>, they count:</p>
+<pre><code>for i in range(5):        # 0,1,2,3,4  — stops BEFORE 5
+    print(f"Wave {i} of rats!")
+
+range(1, 4)      # 1,2,3     start included, stop excluded
+range(10, 0, -1) # 10 down to 1 — a countdown</code></pre>
+<p>Accumulating over a range — total XP to reach a level:</p>
+<pre><code>total = 0
+for lv in range(1, target_level):
+    total += lv * 100</code></pre>
+<p>Rule of thumb: <code>for</code> when you know how many times (each item, each wave); <code>while</code> when you're waiting for a condition (until the player dies).</p>
+<div class="callout trap"><b>Trap</b>Off-by-one. <code>range(5)</code> gives five numbers but stops at 4. <code>range(1, 4)</code> gives 1,2,3 — the stop value is never included. This trips up literally everyone; when a loop count looks wrong, check the range boundaries first.</div>`,
+  quiz:[
+    {q:"What does range(2, 7) produce?", opts:["2,3,4,5,6,7","2,3,4,5,6","3,4,5,6,7","2 through 7 randomly"], a:1, why:"Start included, stop excluded — the interval is [2, 7). Burn this into memory; every off-by-one starts here."},
+    {q:"Best loop for 'keep fighting until the player dies'?", opts:["for i in range(100)","while player_hp > 0","for hp in player","No loop needed"], a:1, why:"Unknown iteration count with an exit condition = while. Guessing '100 turns is probably enough' with a for loop is a real bug found in real shipped games."},
+  ]},
+]},
+{
+  num:3, id:"f3", title:"The Vault", theme:"Lists, dicts & slices", status:"ready",
+  blurb:"Collections hold the game's nouns: inventories, loot tables, monster packs, message logs. Learn the containers, then build the loot system.",
+  project:{id:"3-P", name:"THE LOOT TABLE", file:"exercises/floor03/project_loot.py",
+    brief:"A d100 loot table, a stacking pack (<code>dict</code> of item → count), <code>open_chest()</code> composing both, and an alphabetized <code>pack_report()</code>. Floor 7's procgen will pull loot from this exact table."},
+  exercises:[
+    {id:"3-1", file:"exercises/floor03/ex01_lists.py", goal:"Inventory ops: add, drop safely, peek newest"},
+    {id:"3-2", file:"exercises/floor03/ex02_dicts.py", goal:"Item stats, .get() defaults, price lists"},
+    {id:"3-3", file:"exercises/floor03/ex03_slices.py", goal:"Top-3 scores, recent logs, strobing tiles"},
+  ],
+  lessons:[
+  {id:"3.1", title:"Lists", min:7, content:`
+<p>A list is an ordered, mutable collection — the inventory of Python:</p>
+<pre><code>inventory = ["torch", "rope"]
+inventory.append("protein bar")   # add to end
+inventory.remove("rope")          # drop first match
+"torch" in inventory              # True — membership test
+inventory[0]                      # first item
+inventory[-1]                     # LAST item — negative counts from the end
+len(inventory)                    # how many</code></pre>
+<div class="callout trap"><b>Trap</b><code>.remove()</code> on an item that isn't there raises <code>ValueError</code> and crashes the game. Guard it: <code>if item in inventory: inventory.remove(item)</code>. "Dropping nothing" should be a no-op, not a crash — defensive habits like this are the difference between a demo and a product.</div>
+<div class="callout"><b>Good habit</b><code>inventory[-1]</code> for the newest item, <code>inventory[-2]</code> for second newest. Negative indexing is idiomatic Python — reaching for <code>inventory[len(inventory)-1]</code> marks you as a tourist.</div>`,
+  quiz:[
+    {q:"inventory = [\"torch\", \"rope\", \"torch\"]; inventory.remove(\"torch\"). Result?", opts:["[\"rope\"]","[\"rope\", \"torch\"]","[\"torch\", \"rope\"]","ValueError"], a:1, why:".remove() takes out only the FIRST match, left to right. The second torch survives."},
+    {q:"Safest way to check before removing?", opts:["try removing twice","if item in inventory: inventory.remove(item)","inventory.remove(item, safe=True)","len(inventory) > 0"], a:1, why:"Membership check first. (There's no safe= parameter, and a non-empty list doesn't mean YOUR item is in it.)"},
+  ]},
+  {id:"3.2", title:"Dictionaries", min:8, content:`
+<p>A dict maps keys to values — item stats, monster templates, your Floor 1 character sheet. If lists are the game's sequences, dicts are its <em>nouns</em>:</p>
+<pre><code>sword = {"damage": 9, "value": 40}
+sword["damage"]              # 9
+sword["damage"] = 10         # update
+sword["rarity"] = "rare"     # add a new key
+"heals" in sword             # False — checks KEYS</code></pre>
+<p>The crash-proof read is <code>.get()</code>:</p>
+<pre><code>sword.get("heals", 0)        # 0 — the default, instead of a KeyError</code></pre>
+<p>Looping a dict:</p>
+<pre><code>for name, stats in ITEM_STATS.items():
+    print(f"{name}: {stats['value']}g")</code></pre>
+<div class="callout trap"><b>Trap</b>Square brackets on a missing key raise <code>KeyError</code>. Player types an item name that doesn't exist → crash. Rule: brackets when the key MUST exist (and a crash would mean your own bug), <code>.get(key, default)</code> when the key might not.</div>`,
+  quiz:[
+    {q:"stats = {\"damage\": 4}. What does stats.get(\"heals\", 0) return?", opts:["KeyError","None","0","\"heals\""], a:2, why:".get() returns the default (0) for missing keys. Without a default it returns None; brackets would raise KeyError."},
+    {q:"The counting pattern: counts[r] = counts.get(r, 0) + 1 — what does it do?", opts:["Crashes on the first new key","Counts occurrences, starting new keys at 0","Deletes duplicate keys","Sorts the dict"], a:1, why:"First time a key is seen, .get gives 0, +1 makes it 1. Every time after, it increments. You'll use this pattern in every language you ever learn."},
+  ]},
+  {id:"3.3", title:"Slices", min:6, content:`
+<p>Slices carve pieces out of sequences: <code>seq[start:stop:step]</code>, stop excluded, everything optional:</p>
+<pre><code>scores = [90, 50, 20, 10, 5]
+scores[:3]      # [90, 50, 20]  — first three
+scores[-2:]     # [10, 5]       — last two
+scores[::2]     # [90, 20, 5]   — every other (strobe pattern)
+scores[::-1]    # reversed</code></pre>
+<p>Combined with <code>sorted()</code>, slices answer leaderboard questions in one line:</p>
+<pre><code>top_three = sorted(scores, reverse=True)[:3]</code></pre>
+<div class="callout"><b>Good habit</b>Slices never crash on short input — <code>[7, 3][:3]</code> just returns <code>[7, 3]</code>. This graceful behavior means top_three() works on day one with two scores and day 100 with two thousand. Lean on it.</div>
+<div class="callout trap"><b>Trap</b><code>sorted(x)</code> returns a NEW list; <code>x.sort()</code> mutates in place and returns <code>None</code>. Writing <code>scores = scores.sort()</code> silently sets scores to None — a classic that has ruined many evenings.</div>`,
+  quiz:[
+    {q:"log = [\"a\",\"b\",\"c\",\"d\",\"e\"]. Which slice gives the last 3 entries?", opts:["log[3:]","log[-3:]","log[:3]","log[:-3]"], a:1, why:"Negative start counts from the end: [\"c\",\"d\",\"e\"]. (log[3:] happens to be [\"d\",\"e\"] here — wrong, and wrong differently for other lengths.)"},
+    {q:"What does scores = scores.sort() leave in scores?", opts:["A sorted list","None","A reversed list","TypeError"], a:1, why:".sort() mutates the list and returns None. Either scores.sort() alone, or scores = sorted(scores)."},
+  ]},
+  {id:"3.4", title:"Iteration patterns", min:7, content:`
+<p>Three loop patterns cover 90% of collection work in games (and in QA scripts, and in data work…):</p>
+<p><b>Transform</b> — build a new collection from an old one:</p>
+<pre><code>prices = {}
+for name, stats in ITEM_STATS.items():
+    prices[name] = stats["value"]</code></pre>
+<p><b>Count</b> — tally occurrences:</p>
+<pre><code>counts = {}
+for rarity in drops:
+    counts[rarity] = counts.get(rarity, 0) + 1</code></pre>
+<p><b>Best-so-far</b> — find a max/min with a tracked champion:</p>
+<pre><code>best_name, best_value = None, -1
+for name, stats in ITEM_STATS.items():
+    if stats["value"] &gt; best_value:
+        best_name, best_value = name, stats["value"]</code></pre>
+<div class="callout"><b>Good habit</b>Recognize which pattern a problem is before typing. "Most valuable item" = best-so-far. "Rarity breakdown" = count. "Price list" = transform. Programmers who name the pattern first write the loop right the first time.</div>`,
+  quiz:[
+    {q:"'Return each monster's name mapped to its HP' — which pattern?", opts:["Count","Transform","Best-so-far","None of these"], a:1, why:"You're building a new dict shaped from an old collection: transform."},
+    {q:"In best-so-far, why start best_value at -1 (or float('-inf'))?", opts:["Random tradition","So the FIRST real item always beats it and becomes champion","To crash on empty input","Because dicts start at -1"], a:1, why:"The starting value must lose to any legitimate candidate, so the first comparison installs a real champion."},
+  ]},
+]},
+{num:4, id:"f4", title:"The Forge", theme:"Functions", status:"outline",
+  blurb:"Name your logic, pass it inputs, get outputs back. You refactor Rat Fight's duplication away and forge the damage formulas the whole game will call.",
+  outline:["Defining & calling functions","Parameters, arguments, defaults","return vs print (the big one)","Scope: what a function can see","Docstrings & naming","PROJECT: clean damage formulas + refactored combat"]},
+{num:5, id:"f5", title:"The Archives", theme:"Errors & files", status:"outline",
+  blurb:"try/except, reading and writing files, JSON. You build the save system — and implement permadeath by deleting the save on death. The dungeon remembers nothing.",
+  outline:["Exceptions: try / except / raise","Reading & writing text files","JSON: dicts on disk","Paths & the pathlib module","PROJECT: save/load system with permadeath"]},
+{num:6, id:"f6", title:"The Breeding Pits", theme:"Object-oriented Python", status:"outline",
+  blurb:"Classes bundle data with behavior. Player, Monster, Item — one Entity family. (The pits breed friendly rats and guinea pigs. It's fine. Probably.)",
+  outline:["Classes & instances","Methods & self","__init__ and __repr__","Inheritance vs composition","PROJECT: the Entity system"]},
+{num:7, id:"f7", title:"The Shifting Halls", theme:"Randomness & procgen", status:"outline",
+  blurb:"random, seeds, and the procgen algorithms that make every run different. Seeded randomness keeps it all testable — chaos you can reproduce.",
+  outline:["The random module","Seeds: reproducible chaos","Weighted choices (your loot table, powered up)","Random walks & room placement","PROJECT: procedural dungeon map generator"]},
+{num:8, id:"f8", title:"The Scaffolds", theme:"Modules & structure", status:"outline",
+  blurb:"Your game outgrows one file. Packages, imports, virtual environments, and the project layout that makes a repo look professional on GitHub.",
+  outline:["import and modules","Packages & __init__.py","Virtual environments","Project layout that recruiters recognize","PROJECT: restructure the game into a package"]},
+{num:9, id:"f9", title:"The Proving Grounds", theme:"Testing & quality", status:"outline",
+  blurb:"The tables turn: YOU write the pytest suite now. Fixtures, edge cases, type hints. This floor is a direct deposit into your QA career.",
+  outline:["pytest from the other side","Arrange / Act / Assert","Fixtures & parametrize","Edge cases: thinking like QA","Type hints & mypy basics","PROJECT: the game's test suite, written by you"]},
+{num:10, id:"f10", title:"THE BOSS", theme:"The full roguelike", status:"outline",
+  blurb:"Assemble every organ you've built: ASCII map rendering, movement, monsters, items, saves, permadeath. Descend, debug, survive. Ship it to GitHub with your name on it.",
+  outline:["ASCII rendering & the game grid","Movement & collision","Monster turns & simple AI","Wiring in: character, combat, loot, saves, procgen","Permadeath & the death screen","SHIP IT: README, repo polish, a run recorded in the terminal"]},
+];
+
+const TRACKS = [
+  {id:"python", name:"Python", status:"ready", desc:"The deep track. 10 floors ending in a complete terminal roguelike. Doubles as fuel for your pytest/QA stack."},
+  {id:"cpp", name:"C++", status:"locked", desc:"learncpp-style fundamentals: memory, pointers, the compiler as sparring partner. Endgame: the roguelike rebuilt at native speed.",
+   outline:["Compile & run: the toolchain","Types, references & const","Pointers & memory","Classes & RAII","STL containers","Project: roguelike core in C++"]},
+  {id:"swift", name:"Swift", status:"locked", desc:"Feeds directly into FitnessPalApp. SwiftUI, optionals, value types. Endgame: the roguelike as a native iOS app.",
+   outline:["Swift syntax & optionals","Structs vs classes","SwiftUI views & state","SwiftData persistence","XCTest","Project: iOS roguelike companion"]},
+  {id:"js", name:"JavaScript / TypeScript", status:"locked", desc:"The language this very app is built in. DOM, events, async, then TS types. Endgame: the roguelike running in the browser.",
+   outline:["Variables, functions, arrays & objects","The DOM & events","Async & fetch","TypeScript: types as tests","Project: browser roguelike (canvas)"]},
+  {id:"sql", name:"SQL", status:"locked", desc:"Every QA and SDET posting wants it. Queries, joins, indexes. Endgame: the game's leaderboard and run-history database.",
+   outline:["SELECT & WHERE","JOINs","GROUP BY & aggregates","Indexes & EXPLAIN","Project: run-history + leaderboard DB"]},
+];
+
+/* ============================================================
+   PROGRESS STATE — localStorage merged with committed progress.json
+============================================================ */
+const LS_KEY = "devcrawl.progress";
+let progress = {lessons:[], exercises:[]};
+let repoProgressLoaded = false;
+
+function loadLocal(){
+  try{ const raw = localStorage.getItem(LS_KEY); if(raw){ const p = JSON.parse(raw); progress.lessons = p.lessons||[]; progress.exercises = p.exercises||[]; } }
+  catch(e){ /* first visit or blocked storage — fine */ }
+}
+function saveLocal(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(progress)); }catch(e){} }
+async function mergeRepoProgress(){
+  try{
+    const res = await fetch("progress.json", {cache:"no-store"});
+    if(!res.ok) return;
+    const repo = await res.json();
+    (repo.lessons||[]).forEach(l => { if(!progress.lessons.includes(l)) progress.lessons.push(l); });
+    (repo.exercises||[]).forEach(x => { if(!progress.exercises.includes(x)) progress.exercises.push(x); });
+    repoProgressLoaded = true;
+    saveLocal();
+  }catch(e){ /* offline or file:// — local progress still works */ }
+}
+function lessonDone(id){ return progress.lessons.includes(id); }
+function exDone(id){ return progress.exercises.includes(id); }
+function markLesson(id){ if(!lessonDone(id)){ progress.lessons.push(id); saveLocal(); } }
+
+function floorState(f){
+  if(f.status !== "ready") return {cleared:false, total:0, done:0};
+  const total = f.lessons.length + f.exercises.length + 1;
+  let done = f.lessons.filter(l=>lessonDone(l.id)).length + f.exercises.filter(x=>exDone(x.id)).length + (exDone(f.project.id)?1:0);
+  return {cleared: done===total, total, done};
+}
+function currentFloorNum(){
+  for(const f of PY_FLOORS){
+    if(f.status!=="ready") return f.num;      // deepest ready floor not cleared → else first outline floor
+    if(!floorState(f).cleared) return f.num;
+  }
+  return 10;
+}
+function overallCounts(){
+  let l=0,lt=0,x=0,xt=0;
+  PY_FLOORS.filter(f=>f.status==="ready").forEach(f=>{
+    lt+=f.lessons.length; l+=f.lessons.filter(o=>lessonDone(o.id)).length;
+    xt+=f.exercises.length+1; x+=f.exercises.filter(o=>exDone(o.id)).length + (exDone(f.project.id)?1:0);
+  });
+  return {l,lt,x,xt};
+}
+
+/* ============================================================
+   RENDER HELPERS
+============================================================ */
+const app = document.getElementById("app");
+function esc(s){ return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function toast(msg){
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.classList.add("show");
+  setTimeout(()=>t.classList.remove("show"), 2600);
+}
+function updateHud(){
+  const c = overallCounts();
+  const pct = Math.round(100 * (c.l + c.x) / Math.max(1, c.lt + c.xt));
+  document.getElementById("hud").innerHTML = `depth <b>${currentFloorNum()}</b>/10 · <b>${pct}%</b>`;
+}
+function setNav(key){
+  document.querySelectorAll("#nav a").forEach(a=>a.classList.toggle("active", a.dataset.nav===key));
+}
+
+/* ============================================================
+   VIEWS
+============================================================ */
+function viewHome(){
+  setNav("home");
+  const cur = currentFloorNum();
+  const c = overallCounts();
+  const strata = PY_FLOORS.map(f=>{
+    const st = floorState(f);
+    const cls = f.status!=="ready" ? "locked-f" : st.cleared ? "cleared" : (f.num===cur ? "current" : "");
+    const state = f.status!=="ready" ? "outline" : st.cleared ? "cleared" : `${st.done}/${st.total}`;
+    const marker = f.num===cur ? CRUMB_SVG(24,'var(--glow)') : "";
+    return `<a class="stratum ${cls}" href="#/floor/${f.num}">
+      <span class="fnum">${String(f.num).padStart(2,"0")}</span>
+      <span class="fname">${f.title}<br><span style="font-size:.72rem;color:var(--faint)">${f.theme}</span></span>
+      ${marker}<span class="fstate">${state}</span></a>`;
+  }).join("");
+
+  const curFloor = PY_FLOORS[cur-1];
+  const nextLesson = curFloor.status==="ready" ? curFloor.lessons.find(l=>!lessonDone(l.id)) : null;
+  const nextEx = curFloor.status==="ready" ? [...curFloor.exercises.map(e=>e.id), curFloor.project.id].find(id=>!exDone(id)) : null;
+  const continueHref = nextLesson ? `#/lesson/${nextLesson.id}` : `#/floor/${cur}`;
+  const continueLabel = nextLesson ? `Lesson ${nextLesson.id} — ${nextLesson.title}`
+                      : nextEx ? `Exercise ${nextEx} in the terminal` : `Floor ${cur}`;
+
+  app.innerHTML = `
+  <div class="hero">
+    <div class="descent">
+      <div class="surface-label">▲ surface — daylight, day jobs</div>
+      ${strata}
+    </div>
+    <div>
+      <div class="eyebrow glow">Python track · the descent</div>
+      <h1>Descend.<br>Debug.<br>Survive.</h1>
+      <p class="lead">Ten floors down sits your finished roguelike. Each floor teaches one layer of Python through micro-lessons and browser drills, then makes you prove it in the terminal: real files, real <span class="mono">pytest</span> tests, no progress until they're green.</p>
+      <div class="statgrid">
+        <div class="stat"><div class="n">${c.l}<span style="font-size:1rem;color:var(--faint)">/${c.lt}</span></div><div class="l">lessons cleared</div></div>
+        <div class="stat"><div class="n pink">${c.x}<span style="font-size:1rem;color:var(--faint)">/${c.xt}</span></div><div class="l">tests green</div></div>
+        <div class="stat"><div class="n" style="color:var(--green)">${cur}</div><div class="l">current depth</div></div>
+      </div>
+      <p style="margin:6px 0 16px"><a class="btn" href="${continueHref}">Continue: ${continueLabel}</a></p>
+      <div class="crumbline">${CRUMB_SVG(30)}<span><b style="color:var(--torch)">Crumb</b> squeaks: ${repoProgressLoaded ? "progress synced from your repo. The dungeon remembers." : "reading local progress — commit with <code>dojo.py</code> and push to make it follow you anywhere."}</span></div>
+    </div>
+  </div>`;
+}
+
+function viewTracks(){
+  setNav("tracks");
+  const cards = TRACKS.map(t=>{
+    const pill = t.status==="ready" ? `<span class="pill ready">active</span>` : `<span class="pill locked">unlocks later</span>`;
+    const href = t.status==="ready" ? "#/" : `#/track/${t.id}`;
+    return `<a class="track-card" href="${href}">${pill}<div class="tname">${t.name}</div><p>${t.desc}</p></a>`;
+  }).join("");
+  app.innerHTML = `
+    <div style="padding:44px 0 10px"><div class="eyebrow glow">the wings of the dungeon</div>
+    <h1>Tracks</h1>
+    <p class="lead">Python goes ten floors deep today. The other wings are mapped — same philosophy, same roguelike endgame — and open as you (or Claude) generate them. One language learned properly makes every next one cheaper.</p></div>
+    <div class="tracks-grid">${cards}</div>`;
+}
+
+function viewTrackOutline(id){
+  setNav("tracks");
+  const t = TRACKS.find(t=>t.id===id);
+  if(!t){ location.hash="#/tracks"; return; }
+  app.innerHTML = `
+    <div style="padding:44px 0 10px">
+    <div class="eyebrow">track outline</div>
+    <h1>${t.name}</h1>
+    <p class="lead">${t.desc}</p>
+    <div class="card" style="margin-top:22px"><span class="pill locked">unlocks later</span>
+      <h3 style="margin-top:14px">Planned descent</h3>
+      <ul class="plain">${(t.outline||[]).map(o=>`<li>${o}</li>`).join("")}</ul>
+      <p style="color:var(--muted);font-size:.9rem;margin-top:12px">To open this wing: ask Claude to generate it following the Python track's format — floors, micro-lessons with quizzes, pytest-style verified exercises (or the language's equivalent: Catch2, XCTest, Jest…), and a project per floor building toward the roguelike.</p>
+    </div>
+    <p style="margin-top:18px"><a href="#/tracks">← all tracks</a></p></div>`;
+}
+
+function viewFloor(num){
+  setNav("home");
+  const f = PY_FLOORS[num-1];
+  if(!f){ location.hash="#/"; return; }
+  if(f.status!=="ready"){
+    app.innerHTML = `
+      <div style="padding:44px 0">
+      <div class="eyebrow">floor ${String(num).padStart(2,"0")} · ${f.theme}</div>
+      <h1>${f.title}</h1>
+      <p class="lead">${f.blurb}</p>
+      <div class="card" style="margin-top:22px"><span class="pill outline">outline — not yet generated</span>
+        <h3 style="margin-top:14px">What this floor covers</h3>
+        <ul class="plain">${f.outline.map(o=>`<li>${o}</li>`).join("")}</ul>
+        <p style="color:var(--muted);font-size:.9rem;margin-top:12px">When you clear Floor ${num-1}, ask Claude (or Claude Code, pointed at this repo) to <b>generate Floor ${num}</b>: lessons in <code>docs/index.html</code>'s curriculum data, exercises + pytest tests in <code>exercises/floor${String(num).padStart(2,"0")}/</code>, and ids wired into <code>dojo.py</code>'s MANIFEST. The Floor 1–3 files are the template.</p>
+      </div>
+      <p style="margin-top:18px"><a href="#/">← the descent</a></p></div>`;
+    return;
+  }
+  const st = floorState(f);
+  const lessonRows = f.lessons.map(l=>`
+    <a class="lesson-row ${lessonDone(l.id)?"done":""}" href="#/lesson/${l.id}">
+      <span class="check">${lessonDone(l.id)?"✔":""}</span>
+      <span class="lid">${l.id}</span><span class="lname">${l.title}</span>
+      <span class="ltime">${l.min} min</span></a>`).join("");
+  const exRows = f.exercises.map(x=>`
+    <div class="ex-row ${exDone(x.id)?"done":""}"><span class="check">${exDone(x.id)?"✔":""}</span>
+      <code>${x.file.split("/").pop()}</code><span style="color:var(--muted)">${x.goal}</span>
+      <span class="cmd">dojo.py done ${x.id}</span></div>`).join("");
+  const p = f.project;
+  app.innerHTML = `
+    <div style="padding:44px 0 10px">
+    <div class="eyebrow glow">floor ${String(f.num).padStart(2,"0")} · ${f.theme} · ${st.done}/${st.total} cleared</div>
+    <h1>${f.title}</h1>
+    <p class="lead">${f.blurb}</p>
+
+    <h3 style="margin-top:34px">Lessons <span class="eyebrow" style="margin-left:8px">read + quiz, in the browser</span></h3>
+    ${lessonRows}
+
+    <h3 style="margin-top:30px">Exercises <span class="eyebrow" style="margin-left:8px">in your editor + terminal</span></h3>
+    ${exRows}
+
+    <div class="card" style="margin-top:28px;border-color:${exDone(p.id)?"rgba(70,232,164,.4)":"var(--glow-dim)"}">
+      <span class="pill legendary">floor project ${exDone(p.id)?"· cleared ✔":""}</span>
+      <h3 style="margin-top:12px">${p.name}</h3>
+      <p style="color:var(--muted);font-size:.94rem">${p.brief}</p>
+      <pre style="margin-bottom:0"><code># open ${p.file}
+python3 dojo.py check ${p.id}     # run the tests
+python3 dojo.py done ${p.id}      # green? save + commit</code></pre>
+    </div>
+    <div class="lesson-nav">
+      <a href="#/">← the descent</a>
+      ${f.num<10?`<a href="#/floor/${f.num+1}">Floor ${f.num+1} →</a>`:""}
+    </div></div>`;
+}
+
+function viewLesson(id){
+  setNav("home");
+  let floor=null, lesson=null, idx=-1;
+  for(const f of PY_FLOORS){ if(f.status!=="ready") continue;
+    const i = f.lessons.findIndex(l=>l.id===id);
+    if(i>=0){ floor=f; lesson=f.lessons[i]; idx=i; break; } }
+  if(!lesson){ location.hash="#/"; return; }
+
+  const quizHtml = lesson.quiz.map((q,qi)=>`
+    <div class="quiz" data-q="${qi}">
+      <div class="qhead">Checkpoint ${qi+1} of ${lesson.quiz.length} — what's wrong / what's right?</div>
+      <div class="qbody">
+        <div class="qtext">${q.q}</div>
+        ${q.code?`<pre><code>${esc(q.code)}</code></pre>`:""}
+        ${q.opts.map((o,oi)=>`<button class="opt" data-q="${qi}" data-o="${oi}">${esc(o)}</button>`).join("")}
+        <div class="why" id="why-${qi}"><b>Why</b>${q.why}</div>
+      </div>
+    </div>`).join("");
+
+  const prev = idx>0 ? floor.lessons[idx-1] : null;
+  const next = idx<floor.lessons.length-1 ? floor.lessons[idx+1] : null;
+  const done = lessonDone(id);
+
+  app.innerHTML = `
+    <div style="padding:44px 0 10px;max-width:760px">
+    <div class="eyebrow glow">floor ${String(floor.num).padStart(2,"0")} · ${floor.title} · lesson ${id}</div>
+    <h1 style="font-size:clamp(1.4rem,3.5vw,2rem)">${lesson.title}</h1>
+    ${lesson.content}
+    ${quizHtml}
+    <div style="margin-top:26px">
+      <button class="btn ${done?"done":""}" id="clear-btn" ${done?"":"disabled"}>${done?"✔ Lesson cleared":"Answer both checkpoints to clear"}</button>
+      <p class="mono" style="font-size:.75rem;color:var(--faint);margin-top:10px">to save this to your repo: <code>python3 dojo.py lesson ${id}</code> &nbsp;·&nbsp; browser progress saves locally either way</p>
+    </div>
+    <div class="lesson-nav">
+      <a href="${prev?`#/lesson/${prev.id}`:`#/floor/${floor.num}`}">← ${prev?`${prev.id} ${prev.title}`:floor.title}</a>
+      <a href="${next?`#/lesson/${next.id}`:`#/floor/${floor.num}`}">${next?`${next.id} ${next.title}`:`back to ${floor.title} — the exercises await`} →</a>
+    </div></div>`;
+
+  const answered = new Set();
+  if(done) lesson.quiz.forEach((_,qi)=>answered.add(qi));
+  app.querySelectorAll(".opt").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const qi = +btn.dataset.q, oi = +btn.dataset.o;
+      const q = lesson.quiz[qi];
+      const groupBtns = app.querySelectorAll(`.opt[data-q="${qi}"]`);
+      groupBtns.forEach(b=>{ b.disabled = true;
+        if(+b.dataset.o === q.a) b.classList.add("correct");
+      });
+      if(oi !== q.a) btn.classList.add("wrong");
+      document.getElementById(`why-${qi}`).classList.add("show");
+      answered.add(qi);
+      if(answered.size === lesson.quiz.length && !lessonDone(id)){
+        const cb = document.getElementById("clear-btn");
+        cb.disabled = false; cb.textContent = "Mark lesson cleared";
+      }
+    });
+  });
+  document.getElementById("clear-btn").addEventListener("click", ()=>{
+    if(lessonDone(id)) return;
+    markLesson(id);
+    toast(`Lesson ${id} cleared. Crumb approves.`);
+    viewLesson(id); updateHud();
+  });
+}
+
+function viewSync(){
+  setNav("sync");
+  const localJson = esc(JSON.stringify({lessons:progress.lessons, exercises:progress.exercises, updated:new Date().toISOString().slice(0,19)+"Z"}, null, 2));
+  app.innerHTML = `
+    <div style="padding:44px 0 10px;max-width:760px">
+    <div class="eyebrow glow">the save mechanism</div>
+    <h1>Your repo is your save file</h1>
+    <p class="lead">Progress lives in <code>docs/progress.json</code>, committed to git. Any device that can see your GitHub Pages site sees your descent. There is no account, no backend, nothing to pay for — just commits.</p>
+
+    <h3>The loop</h3>
+    <table class="cheat">
+      <tr><td>python3 dojo.py next</td><td>what to do next</td></tr>
+      <tr><td>python3 dojo.py check 1-1</td><td>run an exercise's tests (red is information, not failure)</td></tr>
+      <tr><td>python3 dojo.py done 1-1</td><td>tests green → saved to progress.json → committed</td></tr>
+      <tr><td>python3 dojo.py lesson 1.2</td><td>record a lesson you cleared in the browser</td></tr>
+      <tr><td>python3 dojo.py status</td><td>the full board</td></tr>
+      <tr><td>python3 dojo.py push</td><td>sync the save to GitHub</td></tr>
+    </table>
+
+    <h3>Browser ↔ repo</h3>
+    <p style="color:var(--muted);font-size:.94rem">Lessons you clear in the browser save to this device instantly (localStorage) and merge with whatever <code>progress.json</code> your deployed site serves. To make browser progress permanent, run the matching <code>dojo.py lesson</code> commands — or paste this snapshot into <code>docs/progress.json</code> and commit:</p>
+    <pre><code id="snapshot">${localJson}</code></pre>
+    <button class="btn ghost" id="copy-snap">Copy snapshot</button>
+
+    <h3>Deploying (one time)</h3>
+    <ul class="plain">
+      <li>Push this repo to GitHub</li>
+      <li>Repo → <b>Settings → Pages</b> → Source: <b>Deploy from a branch</b> → branch <code>main</code>, folder <code>/docs</code></li>
+      <li>Your dungeon is live at <code>https://&lt;you&gt;.github.io/&lt;repo&gt;/</code> — phone, work break room, anywhere</li>
+    </ul>
+    <div class="crumbline">${CRUMB_SVG(30)}<span><b style="color:var(--torch)">Crumb</b> squeaks: commits are reps. Small ones, done often, beat heroic ones done never.</span></div>
+    </div>`;
+  document.getElementById("copy-snap").addEventListener("click", async ()=>{
+    try{ await navigator.clipboard.writeText(document.getElementById("snapshot").textContent); toast("Snapshot copied — paste into docs/progress.json"); }
+    catch(e){ toast("Copy blocked — select the text manually"); }
+  });
+}
+
+/* ============================================================
+   ROUTER
+============================================================ */
+function route(){
+  const h = location.hash || "#/";
+  updateHud();
+  window.scrollTo(0,0);
+  let m;
+  if(h==="#/"||h==="#") return viewHome();
+  if(h==="#/tracks") return viewTracks();
+  if(h==="#/sync") return viewSync();
+  if(m = h.match(/^#\/track\/(\w+)$/)) return viewTrackOutline(m[1]);
+  if(m = h.match(/^#\/floor\/(\d+)$/)) return viewFloor(+m[1]);
+  if(m = h.match(/^#\/lesson\/([\d.]+)$/)) return viewLesson(m[1]);
+  viewHome();
+}
+window.addEventListener("hashchange", route);
+
+loadLocal();
+route();
+mergeRepoProgress().then(()=>{ route(); });
+</script>
+</body>
+</html>
