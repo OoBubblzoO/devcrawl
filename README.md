@@ -5,7 +5,8 @@
 ## Setup (once)
 
 ```bash
-pip install pytest        # the only dependency
+pip install pytest        # Python wing
+xcode-select --install    # C++ wing (macOS: installs the c++ compiler; skip if you have Xcode tools)
 ```
 
 Push this repo to GitHub, then turn on the site:
@@ -29,13 +30,19 @@ python3 dojo.py push          # sync your save to GitHub
 
 `done` refuses to save unless tests pass. No participation trophies in the dungeon.
 
+C++ exercises use the same loop with `c` ids (`c1-1` … `c3-P`) — dojo compiles them
+with your system compiler and runs the checks; no test framework to install
+(`exercises/cpp/devtest.h` is 40 lines, read it). The C++ wing stays sealed until
+every Python exercise is green; `--force` exists if you must peek.
+
 ## What's built vs. what's an outline
 
 | | |
 |---|---|
-| **Floors 1–3** | Fully built: 12 lessons w/ quizzes, 9 exercises, 3 projects, 59 tests |
-| **Floors 4–10** | Outlined in the app + `exercises/floorNN/README.md` stubs |
-| **C++ / Swift / JS-TS / SQL tracks** | Outlined on the Tracks page |
+| **Python Floors 1–3** | Fully built: 12 lessons w/ quizzes, 9 exercises, 3 projects, 59 tests |
+| **C++ Floors 1–3** | Fully built (12 lessons, 12 exercise/project files) — **sealed until Python 1–3 is cleared** |
+| **Floors 4–10, both wings** | Outlined in the app + `README.md` stubs |
+| **Swift / JS-TS / SQL tracks** | Outlined on the Tracks page |
 
 ## Expanding the dungeon
 

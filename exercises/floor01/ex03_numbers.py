@@ -23,25 +23,25 @@ turn_number = 7
 # --- Part 1: the damage formula ----------------------------------------------
 # total_damage = base damage plus twice the strength modifier
 # TODO:
-total_damage = ...
+total_damage = base_damage + strength_mod * 2
 
 # --- Part 2: splitting the loot ----------------------------------------------
 # The party splits gold_found evenly. Nobody gets fractions of a coin.
 #   gold_each      -> each member's share as a whole int (floor division)
 #   gold_leftover  -> coins that couldn't be split (modulo)
 # TODO:
-gold_each = ...
-gold_leftover = ...
+gold_each = gold_found // party_size
+gold_leftover = gold_found % party_size
 
 # --- Part 3: whose turn? -------------------------------------------------------
 # On even turn numbers the player moves; on odd turns the monsters move.
 # Compute is_monster_turn as a boolean using % and == (no if statements yet —
 # a comparison already produces True/False).
 # TODO:
-is_monster_turn = ...
+is_monster_turn = turn_number % 2 
 
 # --- Part 4: crit! -------------------------------------------------------------
 # A critical hit squares the strength modifier and adds it to total_damage.
 # Use ** for the square. (Don't modify total_damage — new variable.)
 # TODO:
-crit_damage = ...
+crit_damage = total_damage + strength_mod ** 2

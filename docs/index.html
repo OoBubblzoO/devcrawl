@@ -447,10 +447,253 @@ for name, stats in ITEM_STATS.items():
   outline:["ASCII rendering & the game grid","Movement & collision","Monster turns & simple AI","Wiring in: character, combat, loot, saves, procgen","Permadeath & the death screen","SHIP IT: README, repo polish, a run recorded in the terminal"]},
 ];
 
+const CPP_FLOORS = [
+{
+  num:1, id:"c1", title:"The Cold Open", theme:"Compile, variables & strings", status:"ready", wing:"cpp",
+  blurb:"The mirror dungeon — colder, closer to the metal. Same first floor you cleared in Python, rebuilt in a language where the compiler checks your work before it ever runs.",
+  project:{id:"c1-P", name:"THE ROLL — character creator (C++)", file:"exercises/cpp/floor01/project_character.cpp",
+    brief:"Your Python dict becomes a <code>struct Character</code> with fixed, typed fields — plus a preview of references: <code>level_up(Character&amp; c)</code> modifies the real character, not a copy."},
+  exercises:[
+    {id:"c1-1", file:"exercises/cpp/floor01/ex01_variables.cpp", goal:"Fix declarations — this one starts as a compile error, on purpose"},
+    {id:"c1-2", file:"exercises/cpp/floor01/ex02_strings.cpp", goal:"The HUD via + and std::to_string (no f-strings here)"},
+    {id:"c1-3", file:"exercises/cpp/floor01/ex03_numbers.cpp", goal:"Integer division: Python's trap, inverted"},
+  ],
+  lessons:[
+  {id:"c1.1", title:"Compile & run, variables & types", min:8, content:`
+<p>Python reads your file top to bottom and finds problems as it hits them. C++ adds a step: the <b>compiler</b> translates your whole file to machine code first, and refuses if anything is off. Two-step ritual:</p>
+<pre><code>c++ -std=c++17 -Wall game.cpp -o game    # compile (dojo does this for you)
+./game                                    # run the result</code></pre>
+<p>The other big shift: <b>every variable declares its type</b>, and the type is forever:</p>
+<pre><code>int player_hp = 30;
+std::string player_name = "Crumb";   // needs #include &lt;string&gt;
+bool is_alive = true;                // lowercase true/false!
+const int STARTING_GOLD = 10;        // const = compiler-enforced "never changes"</code></pre>
+<div class="callout"><b>Good habit</b><code>const</code> everything that shouldn't change. In Python, SHOUTING_CASE constants were a polite convention anyone could ignore. In C++, <code>const</code> is a contract the compiler enforces — assign to it and the build fails. Free bug prevention.</div>
+<div class="callout trap"><b>Trap</b>An uninitialized local like <code>int hp;</code> isn't zero — it's <em>whatever garbage was in that memory</em>. Python would never. Always initialize at declaration: <code>int hp = 0;</code></div>`,
+  quiz:[
+    {q:"What happens here?", code:"const int MAX_HP = 30;\nMAX_HP = 50;", opts:["MAX_HP becomes 50","Runtime warning","Compile error — assignment of read-only variable","Works, but only once"], a:2, why:"const is enforced at compile time. The program never even builds — the bug is caught before it can exist. This is the core C++ trade: more friction up front, fewer surprises later."},
+    {q:"Which line is legal C++?", opts:["player_hp = 30;  (first mention)","int player_hp = 30;","player_hp: int = 30","let player_hp = 30;"], a:1, why:"Declarations need a type up front. The first is missing its type (a compile error you'll meet in exercise c1-1), the others are Python/JS visiting the wrong dungeon."},
+  ]},
+  {id:"c1.2", title:"std::string", min:7, content:`
+<p>C++ strings live in <code>std::string</code> (include <code>&lt;string&gt;</code>). No f-strings — you build with <code>+</code>, and numbers must be converted explicitly:</p>
+<pre><code>std::string hud = name + " | HP " + std::to_string(hp)
+                + "/" + std::to_string(max_hp);</code></pre>
+<p>Forget <code>std::to_string</code> and gluing an int on directly won't compile — which is Python's runtime <code>TypeError</code> from Floor 1, promoted to a compile-time error. Same trap, caught earlier.</p>
+<p>And a culture shock: there's no <code>.upper()</code>. You loop the characters yourself:</p>
+<pre><code>#include &lt;cctype&gt;
+for (char&amp; c : msg) c = toupper(c);   // the & means: change the REAL character</code></pre>
+<div class="callout"><b>Good habit</b>Notice what that <code>&amp;</code> is doing — without it, the loop hands you a <em>copy</em> of each character, you uppercase the copy, and the string never changes. No error, no warning, just a quiet nothing. Remember this; references get their full lesson on Floor C3.</div>`,
+  quiz:[
+    {q:"Why won't this compile?", code:"int dmg = 7;\nstd::string s = \"You take \" + dmg;", opts:["Strings can't hold numbers","dmg must pass through std::to_string(dmg)","+ isn't defined for strings","Missing semicolon"], a:1, why:"C++ won't implicitly convert an int to string text. std::to_string(dmg) does it explicitly. (Fun fact: this line can even compile to something horrifying with char* strings — std::string keeps you safe.)"},
+    {q:"What does this loop do to msg?", code:"for (char c : msg) c = toupper(c);", opts:["Uppercases msg","Nothing — c is a copy of each character","Compile error","Uppercases only the first letter"], a:1, why:"Without the &, each c is a throwaway copy. `for (char& c : msg)` modifies the real characters. Missing-& is a top-5 beginner C++ bug."},
+  ]},
+  {id:"c1.3", title:"Numbers & the division flip", min:6, content:`
+<p>Remember Python's trap — <code>/</code> always giving floats? C++ inverts it: <b>int ÷ int truncates.</b></p>
+<pre><code>47 / 4     // 11   — free floor division
+47 % 4     // 3    — modulo, same as Python
+7 / 2      // 3    — NOT 3.5!</code></pre>
+<p>Great for gold splits. Catastrophic for percentages:</p>
+<pre><code>int hp = 24, max_hp = 30;
+double pct = hp / max_hp * 100;          // 0  — int math happened first
+double pct = (double)hp / max_hp * 100;  // 80.0 — cast BEFORE dividing</code></pre>
+<p>The cast <code>(double)hp</code> promotes the whole division to floating point. Cast <em>before</em> the divide — casting the already-truncated result of <code>hp / max_hp</code> just gives you <code>0.0</code> with more decimal places.</p>
+<div class="callout trap"><b>Trap</b>There's no <code>**</code> in C++. For squares just multiply: <code>mod * mod</code>. (<code>std::pow</code> exists in <code>&lt;cmath&gt;</code> but returns a double — overkill for game stats.)</div>`,
+  quiz:[
+    {q:"What is 7 / 2 in C++ (both ints)?", opts:["3.5","3","4","Compile error"], a:1, why:"Int division truncates toward zero. Python's // for free — whether you wanted it or not."},
+    {q:"Which computes a correct health percentage?", opts:["hp / max_hp * 100","(double)(hp / max_hp) * 100","(double)hp / max_hp * 100","hp // max_hp * 100"], a:2, why:"Cast an OPERAND before dividing. Option B casts the result of int division — already truncated to 0, now just 0.0. Option D isn't C++ at all."},
+  ]},
+  {id:"c1.4", title:"Reading compiler errors", min:8, content:`
+<p>Python's traceback told you where a crash happened <em>while running</em>. The C++ compiler tells you before anything runs — and it can be… verbose. The survival rules:</p>
+<ul class="plain">
+<li><b>Read the FIRST error, top-down.</b> One real mistake often triggers a cascade of echo errors below it. Fix the first, recompile, repeat.</li>
+<li><b>The location is exact:</b> <code>ex01_variables.cpp:17:1: error:</code> means file, line 17, column 1.</li>
+<li><b>"does not name a type"</b> usually means a missing type on a declaration, or a typo'd type name.</li>
+<li><b>"expected ';'"</b> — you forgot a semicolon, usually on the line <em>above</em> the one reported.</li>
+</ul>
+<pre><code>ex01.cpp:17:1: error: 'torch_count' does not name a type
+   17 | torch_count = 3;
+      | ^~~~~~~~~~~</code></pre>
+<p>That little <code>^~~~~</code> arrow points at the exact token. The compiler is pedantic, but it is never vague.</p>
+<div class="callout"><b>Good habit</b>dojo compiles with <code>-Wall</code> — all warnings on. Treat warnings as errors-in-waiting: they compile today and page you at 3am in five years. Professional C++ shops literally enforce warnings-as-errors in CI, a thing you'll meet again on Floor C9.</div>`,
+  quiz:[
+    {q:"You get 14 errors from one file. Where do you start?", opts:["The last one","The shortest one","The FIRST one — the rest are often echoes","Recompile, maybe they go away"], a:2, why:"One missing semicolon or type can confuse the parser for the rest of the file. Fix error #1, recompile, and watch ten 'errors' vanish."},
+    {q:"error: expected ';' before 'int' on line 20 usually means…", opts:["Line 20 has too many semicolons","The semicolon is missing on the line ABOVE","int is misspelled","You need a newer compiler"], a:1, why:"The parser only notices the missing ';' when the NEXT statement starts. Classic off-by-one-line in error reporting — knowing it saves real time."},
+  ]},
+]},
+{
+  num:2, id:"c2", title:"The Iron Sparring Hall", theme:"Booleans, branching & loops", status:"ready", wing:"cpp",
+  blurb:"Biscuit again — same fight, colder floor. Control flow reads almost identically to Python; the traps are in the punctuation.",
+  project:{id:"c2-P", name:"RAT FIGHT — C++ edition", file:"exercises/cpp/floor02/project_rat_fight.cpp",
+    brief:"The same deterministic combat loop, typed: <code>attack()</code>, <code>is_defeated()</code>, composed into <code>fight()</code> returning <code>std::string</code>. You've designed this logic before — now feel how the second language goes twice as fast."},
+  exercises:[
+    {id:"c2-1", file:"exercises/cpp/floor02/ex01_booleans.cpp", goal:"State checks, and the = vs == landmine"},
+    {id:"c2-2", file:"exercises/cpp/floor02/ex02_branching.cpp", goal:"Crit table, doors, the clamp"},
+    {id:"c2-3", file:"exercises/cpp/floor02/ex03_loops.cpp", goal:"while, the classic for, countdown strings"},
+  ],
+  lessons:[
+  {id:"c2.1", title:"Booleans & the == landmine", min:6, content:`
+<p>Comparisons look like Python's: <code>==  !=  &lt;  &gt;  &lt;=  &gt;=</code>. Combining is punctuation instead of words:</p>
+<pre><code>has_key &amp;&amp; door_locked     // and
+is_critical || is_cursed   // or
+!torch_lit                 // not</code></pre>
+<p>Now the famous one. In Python, <code>if hp = 0:</code> is a syntax error — the language protects you. In C++:</p>
+<pre><code>if (hp = 0) { die(); }   // ASSIGNS 0 to hp, evaluates to false, compiles fine</code></pre>
+<p>That's assignment inside a condition: legal, silent, and it just set your player's HP to zero <em>while skipping the death check</em>. The <code>-Wall</code> flag makes the compiler warn about it — one more reason dojo compiles with it on.</p>
+<div class="callout"><b>Good habit</b>The robust death check survives translation: <code>hp &lt;= 0</code>, never <code>==</code>. Overkill damage exists in every language.</div>`,
+  quiz:[
+    {q:"What does this do?", code:"int hp = 30;\nif (hp = 0) { respawn(); }", opts:["Respawns when hp is 0","Sets hp to 0 and never respawns","Compile error","Respawns always"], a:1, why:"= assigns; the condition becomes the assigned value (0 = false), so the branch never runs — and hp is now 0. Two bugs in five characters. -Wall warns about exactly this."},
+    {q:"C++ for 'has key AND door is locked'?", opts:["has_key and door_locked","has_key && door_locked","has_key & door_locked","both A and B compile"], a:3, why:"Surprise: C++ actually accepts the word `and` as an alternative token! But && is what everyone writes and reads. (Single & is bitwise — different tool, occasional trap.)"},
+  ]},
+  {id:"c2.2", title:"if / else if / else", min:6, content:`
+<p>Same logic as Python, new costume — parentheses around conditions, braces around bodies, <code>else if</code> as two words:</p>
+<pre><code>if (roll == 20) {
+    result = "crit";
+} else if (roll >= 11) {
+    result = "hit";
+} else {
+    result = "graze";
+}</code></pre>
+<p>Order still rules: first true branch wins, most specific checks first — your Python instinct transfers untouched. So does the clamp:</p>
+<pre><code>hp += 10;
+if (hp &gt; max_hp) hp = max_hp;    // braces optional for one statement…</code></pre>
+<div class="callout trap"><b>Trap</b>…but optional braces have burned everyone at least once. Add a second line under a brace-less if and it runs <em>unconditionally</em> — it just looks indented. (Apple's infamous <code>goto fail</code> SSL bug was exactly this shape.) House rule until instinct forms: always braces.</div>`,
+  quiz:[
+    {q:"What prints for hp = 50?", code:"if (hp > 100)\n    printf(\"godmode\");\n    printf(\"!!\");", opts:["nothing","godmode!!","!!","compile error"], a:2, why:"No braces = only the FIRST statement belongs to the if. The second printf runs no matter what — indentation is a lie in C++. Braces would have caught it."},
+    {q:"potion_effect(28, 30) with heal 10 and a clamp returns…", opts:["38","30","28","10"], a:1, why:"Same clamp as the Python wing: 38 capped to max 30. Some knowledge is language-proof — that's why the wings mirror each other."},
+  ]},
+  {id:"c2.3", title:"while", min:5, content:`
+<p>Identical soul, C++ syntax:</p>
+<pre><code>int turns = 0;
+while (monster_hp &gt; 0) {
+    monster_hp -= damage;
+    turns++;              // ++ is the classic C++ increment
+}</code></pre>
+<p><code>turns++</code>, <code>hp--</code>, <code>total += x</code> — the shorthand family. And the game loop is still the deepest truth in the building:</p>
+<pre><code>while (player_hp &gt; 0) {
+    take_turn();
+}</code></pre>
+<div class="callout trap"><b>Trap</b>Infinite loops hang in C++ exactly like Python — but a compiled loop doing nothing spins a CPU core at 100%. Same diagnosis ritual: Ctrl+C, then ask "what inside this loop moves the condition toward false?"</div>`,
+  quiz:[
+    {q:"How many iterations?", code:"int hp = 10;\nwhile (hp > 0) { hp -= 4; }", opts:["2","3","4","forever"], a:1, why:"10 → 6 → 2 → -2: three passes. Identical to the Python quiz on Floor 2 — deliberately. Logic transfers; syntax is a costume."},
+    {q:"turns++ is shorthand for…", opts:["turns = turns + 1","turns = 1","turns * 2","print(turns)"], a:0, why:"Increment by one. It's literally the ++ in 'C++' — the language named itself 'C, incremented'."},
+  ]},
+  {id:"c2.4", title:"The classic for loop", min:7, content:`
+<p>Python's <code>for i in range(1, 5)</code> becomes the three-part classic:</p>
+<pre><code>for (int lv = 1; lv &lt; 5; lv++) {
+    total += lv * 100;
+}
+//   ^init      ^condition  ^step — runs after each pass</code></pre>
+<p>Counting down? Flip the step: <code>for (int n = turns; n &gt; 0; n--)</code>. More control than range(), same off-by-one risks: <code>&lt;</code> vs <code>&lt;=</code> in the condition is exactly Python's stop-excluded question wearing a trench coat.</p>
+<p>C++ also has Python-style iteration for collections — the <b>range-based for</b> you already used in c1.2:</p>
+<pre><code>for (const auto&amp; item : inventory) { ... }</code></pre>
+<p>Rule of thumb: counting → classic for; visiting every element → range-based for. Floor C3 leans hard on the second.</p>`,
+  quiz:[
+    {q:"How many times does this run?", code:"for (int i = 0; i < 5; i++) { ... }", opts:["4","5","6","forever"], a:1, why:"i = 0,1,2,3,4. Same count as Python's range(5), same stop-excluded logic — the condition i < 5 fails at 5."},
+    {q:"Which loop visits every item of a vector, Python-style?", opts:["for (int i : 5)","for (const auto& item : inventory)","while (inventory)","foreach item in inventory"], a:1, why:"Range-based for. `auto` asks the compiler to deduce the type; `&` avoids copying each element; `const` promises not to modify. All three together is idiomatic modern C++."},
+  ]},
+]},
+{
+  num:3, id:"c3", title:"The Strongroom", theme:"Vectors, maps & references", status:"ready", wing:"cpp",
+  blurb:"The Vault's iron twin. Same loot, typed containers — and the & symbol finally gets its full lesson, because in C++ you decide when you're handing over the real thing versus a copy.",
+  project:{id:"c3-P", name:"THE LOOT TABLE — C++ edition", file:"exercises/cpp/floor03/project_loot.cpp",
+    brief:"The d100 table as a <code>vector</code> of structs, a stacking pack as <code>std::map</code> — which keeps keys sorted automatically, so Python's <code>sorted()</code> call becomes free. Every wing has one place the language does you a favor."},
+  exercises:[
+    {id:"c3-1", file:"exercises/cpp/floor03/ex01_vectors.cpp", goal:"Inventory ops with std::find, and the empty-back() UB guard"},
+    {id:"c3-2", file:"exercises/cpp/floor03/ex02_maps.cpp", goal:"Safe lookups — the [] that secretly inserts"},
+    {id:"c3-3", file:"exercises/cpp/floor03/ex03_iteration.cpp", goal:"Sort-then-trim, counting, the strobe"},
+  ],
+  lessons:[
+  {id:"c3.1", title:"std::vector", min:7, content:`
+<p>The C++ list: ordered, growable, but every element the <b>same declared type</b>:</p>
+<pre><code>#include &lt;vector&gt;
+std::vector&lt;std::string&gt; inventory = {"torch", "rope"};
+inventory.push_back("protein bar");   // append
+inventory.size();                     // length
+inventory[0];  inventory.back();      // first / last</code></pre>
+<p>Searching lives in <code>&lt;algorithm&gt;</code>:</p>
+<pre><code>auto it = std::find(inv.begin(), inv.end(), "torch");
+if (it != inv.end()) inv.erase(it);   // found → remove it</code></pre>
+<p>That <code>it</code> is an <em>iterator</em> — think "a cursor pointing at a position." <code>end()</code> means "one past the last item," which doubles as the not-found signal.</p>
+<div class="callout trap"><b>Trap</b><code>inv.back()</code> on an EMPTY vector isn't an exception like Python's <code>IndexError</code> — it's <b>undefined behavior</b>: maybe garbage, maybe a crash, maybe it works on your machine and detonates on someone else's. C++ trusts you completely, including to hurt yourself. Guard with <code>.empty()</code> first, every time.</div>`,
+  quiz:[
+    {q:"std::find returns inv.end(). Meaning?", opts:["The item is the last element","The item was not found","The vector is empty","An error was thrown"], a:1, why:"end() points one PAST the last element — nothing lives there, so 'your search reached it' means 'not found'. Comparing against end() is the idiom."},
+    {q:"What does back() on an empty vector do?", opts:["Returns \"\"","Throws an exception","Undefined behavior — anything at all","Returns nullptr"], a:2, why:"UB is C++'s scariest concept: the language makes NO promise. Not even 'it crashes'. This is why C++ code guards its edges — and why Floor C9's sanitizers exist."},
+  ]},
+  {id:"c3.2", title:"std::map & the [] that inserts", min:7, content:`
+<p>The C++ dict, with one shocking personality trait:</p>
+<pre><code>#include &lt;map&gt;
+std::map&lt;std::string, int&gt; damage = {{"torch", 1}, {"steel sword", 9}};
+
+damage["torch"]          // 1 — fine
+damage["cursed spoon"]   // 0 — AND IT JUST INSERTED cursed spoon INTO THE MAP</code></pre>
+<p><b>Reading with [] on a missing key silently creates it</b> (with a default value). Python raises KeyError; C++ quietly grows your data during a lookup. The safe reads:</p>
+<pre><code>if (damage.count(name)) { ... }          // does it exist?
+auto it = damage.find(name);             // iterator, end() if missing
+if (it != damage.end()) use(it-&gt;second);</code></pre>
+<div class="callout"><b>Good habit</b>The trap becomes a feature when you're WRITING: <code>counts[rarity]++</code> is the entire counting pattern — first sight inserts 0, then increments. Python needed <code>.get(r, 0) + 1</code>; C++ does it in five characters. Know which mode you're in: reading → guard; counting → embrace.</div>`,
+  quiz:[
+    {q:"prices has 4 entries. After `int v = prices[\"unknown\"];`, how many entries?", opts:["4","5","3","Throws KeyError"], a:1, why:"[] on a missing key default-constructs it (0 for int) and inserts. Your READ just wrote. .count() or .find() for lookups you don't want to leave fingerprints on."},
+    {q:"Why is counts[r]++ the whole counting pattern in C++?", opts:["It isn't — it crashes on new keys","First access inserts 0, then ++ increments","Maps auto-count duplicates","++ works only on maps"], a:1, why:"The [] insert-on-missing behavior seeds every new key at 0. The exact behavior that bites you in lookups feeds you in counters."},
+  ]},
+  {id:"c3.3", title:"References — the & lesson", min:8, content:`
+<p>The most important C++ idea so far. When you pass a variable to a function, C++ <b>copies it</b> by default:</p>
+<pre><code>void level_up(Character c) { c.level++; }   // levels up a COPY. Original unchanged.
+void level_up(Character&amp; c) { c.level++; }  // & = the real one. Original changes.</code></pre>
+<p>Python never asked — dicts and lists were always "the real one" (remember <code>level_up(char)</code> just working on Floor 1?). C++ makes it a choice, and the choice has three settings:</p>
+<pre><code>void f(Character c)         // copy: safe, but slow for big things &amp; can't modify
+void f(Character&amp; c)        // reference: fast, CAN modify the original
+void f(const Character&amp; c)  // fast, and PROMISES not to modify — the workhorse</code></pre>
+<div class="callout"><b>Good habit</b>Default to <code>const&amp;</code> for anything bigger than an int that you only read; drop the <code>const</code> only when mutation is the point. Your exercise files already follow this — go re-read their signatures with new eyes.</div>
+<div class="callout trap"><b>Trap</b>Forgetting <code>&amp;</code> produces the quietest bug in C++: everything compiles, runs, and the change just… doesn't stick, because it happened to a copy that died at the closing brace. If a mutation mysteriously "doesn't work," check the signature first.</div>`,
+  quiz:[
+    {q:"After heal(c) runs, what is c.hp?", code:"void heal(Character c) { c.hp = 30; }\n// caller:\nCharacter c = make_character(\"Crumb\");\nc.hp = 5;\nheal(c);", opts:["30","5","0","Compile error"], a:1, why:"No & — heal received a copy, healed the copy, the copy evaporated. c.hp is still 5. The fix is one character: Character& c."},
+    {q:"Best parameter type for a function that only READS a big struct?", opts:["Character c","Character& c","const Character& c","Character* maybe"], a:2, why:"const& : no copy (fast), no mutation (safe), intent documented in the signature. The default professional choice."},
+  ]},
+  {id:"c3.4", title:"Iteration patterns, typed", min:6, content:`
+<p>The same three patterns from the Python Vault, in their C++ costumes:</p>
+<p><b>Transform / accumulate</b> — structured bindings unpack pairs:</p>
+<pre><code>int total = 0;
+for (const auto&amp; [name, value] : ITEM_VALUE) total += value;</code></pre>
+<p><b>Count</b> — the [] feature at work: <code>counts[r]++;</code></p>
+<p><b>Best-so-far</b> — unchanged in spirit:</p>
+<pre><code>std::string best; int best_v = -1;
+for (const auto&amp; [name, v] : ITEM_VALUE)
+    if (v &gt; best_v) { best = name; best_v = v; }</code></pre>
+<p>No slices in C++ — the idiom is <b>sort, then trim</b>:</p>
+<pre><code>std::sort(scores.begin(), scores.end(), std::greater&lt;int&gt;());
+if (scores.size() &gt; 3) scores.resize(3);</code></pre>
+<div class="callout"><b>Good habit</b>You've now solved identical problems in two languages. Notice what stayed constant: the patterns, the boundary checks, the test-first loop. That invariant core is what "knowing how to program" actually is — languages are skins over it. Language three (whichever you pick) will take a third of the time this one did.</div>`,
+  quiz:[
+    {q:"What does `for (const auto& [name, value] : prices)` do?", opts:["Compile error — too much punctuation","Unpacks each key-value pair, read-only, no copies","Sorts prices while looping","Only works on vectors"], a:1, why:"Structured bindings: each map entry is a pair; [name, value] unpacks it. const& keeps it read-only and copy-free. Peak modern C++ idiom."},
+    {q:"The C++ equivalent of Python's sorted(scores, reverse=True)[:3]?", opts:["scores.sort().slice(3)","std::sort desc, then resize(3) if bigger","scores[::-1][:3]","std::top3(scores)"], a:1, why:"Sort with std::greater, trim with resize. More keystrokes than the slice — and noticeably faster at scale, which is the whole C++ bargain."},
+  ]},
+]},
+{num:4, id:"c4", title:"The Iron Forge", theme:"Functions & headers", status:"outline", wing:"cpp",
+  blurb:"Declarations vs definitions, header files, overloading. The .h/.cpp split that structures every real C++ codebase.",
+  outline:["Declarations vs definitions","Header files & #include guards","Function overloading","Default arguments","PROJECT: damage formulas in a proper .h/.cpp split"]},
+{num:5, id:"c5", title:"The Iron Archives", theme:"Errors & files", status:"outline", wing:"cpp",
+  blurb:"Exceptions, fstream, parsing save data by hand. Permadeath, compiled.",
+  outline:["try / catch / throw","fstream: reading & writing","Parsing text data","std::optional for maybe-values","PROJECT: the save system with permadeath"]},
+{num:6, id:"c6", title:"The Iron Pits", theme:"Classes & RAII", status:"outline", wing:"cpp",
+  blurb:"Constructors, destructors, encapsulation — and RAII, the idea that makes C++ resource handling famous.",
+  outline:["Classes, constructors, destructors","public / private","RAII: resources tied to lifetime","Composition over inheritance","PROJECT: the Entity system"]},
+{num:7, id:"c7", title:"The Shifting Iron Halls", theme:"Randomness & procgen", status:"outline", wing:"cpp",
+  blurb:"<random> done right: engines, distributions, seeds. The map generator, compiled and fast.",
+  outline:["std::mt19937 & seeding","Distributions (uniform, weighted)","Reproducible chaos for tests","PROJECT: procedural dungeon map generator"]},
+{num:8, id:"c8", title:"The Iron Scaffolds", theme:"Build & structure", status:"outline", wing:"cpp",
+  blurb:"Multiple files, Make/CMake basics, the layout of a real C++ repo.",
+  outline:["Translation units & linking","Make, then CMake","Project layout","PROJECT: the game as a real multi-file build"]},
+{num:9, id:"c9", title:"The Iron Proving Grounds", theme:"Testing & quality", status:"outline", wing:"cpp",
+  blurb:"A real framework (Catch2), sanitizers that catch UB, warnings-as-errors. QA in a compiled world — deeply relevant to your résumé.",
+  outline:["Catch2 (you've earned a real framework)","AddressSanitizer & UBSan","Warnings as errors in CI","PROJECT: the game's C++ test suite"]},
+{num:10, id:"c10", title:"THE IRON BOSS", theme:"The full roguelike, compiled", status:"outline", wing:"cpp",
+  blurb:"Everything, at native speed: grid render, movement, monsters, items, permadeath. The same game twice is a portfolio story no bootcamp grad has.",
+  outline:["Grid rendering & the game loop","Movement & collision","Monster AI","Wiring in every organ","SHIP IT: the C++ roguelike on your GitHub"]},
+];
+
 const TRACKS = [
   {id:"python", name:"Python", status:"ready", desc:"The deep track. 10 floors ending in a complete terminal roguelike. Doubles as fuel for your pytest/QA stack."},
-  {id:"cpp", name:"C++", status:"locked", desc:"learncpp-style fundamentals: memory, pointers, the compiler as sparring partner. Endgame: the roguelike rebuilt at native speed.",
-   outline:["Compile & run: the toolchain","Types, references & const","Pointers & memory","Classes & RAII","STL containers","Project: roguelike core in C++"]},
+  {id:"cpp", name:"C++", status:"gated", desc:"The mirror dungeon: your roguelike rebuilt closer to the metal. Floors 1–3 fully built — sealed until the Python floors are cleared."},
   {id:"swift", name:"Swift", status:"locked", desc:"Feeds directly into FitnessPalApp. SwiftUI, optionals, value types. Endgame: the roguelike as a native iOS app.",
    outline:["Swift syntax & optionals","Structs vs classes","SwiftUI views & state","SwiftData persistence","XCTest","Project: iOS roguelike companion"]},
   {id:"js", name:"JavaScript / TypeScript", status:"locked", desc:"The language this very app is built in. DOM, events, async, then TS types. Endgame: the roguelike running in the browser.",
@@ -491,6 +734,15 @@ function floorState(f){
   const total = f.lessons.length + f.exercises.length + 1;
   let done = f.lessons.filter(l=>lessonDone(l.id)).length + f.exercises.filter(x=>exDone(x.id)).length + (exDone(f.project.id)?1:0);
   return {cleared: done===total, total, done};
+}
+function cppUnlocked(){
+  return PY_FLOORS.filter(f=>f.status==="ready").every(f=>floorState(f).cleared);
+}
+function cppProgressToUnlock(){
+  const ready = PY_FLOORS.filter(f=>f.status==="ready");
+  let done=0, total=0;
+  ready.forEach(f=>{ const s=floorState(f); done+=s.done; total+=s.total; });
+  return {done, total};
 }
 function currentFloorNum(){
   for(const f of PY_FLOORS){
@@ -567,7 +819,7 @@ function viewHome(){
         <div class="stat"><div class="n pink">${c.x}<span style="font-size:1rem;color:var(--faint)">/${c.xt}</span></div><div class="l">tests green</div></div>
         <div class="stat"><div class="n" style="color:var(--green)">${cur}</div><div class="l">current depth</div></div>
       </div>
-      <p style="margin:6px 0 16px"><a class="btn" href="${continueHref}">Continue: ${continueLabel}</a></p>
+      <p style="margin:6px 0 16px"><a class="btn" href="${continueHref}">Continue: ${continueLabel}</a>${cppUnlocked()?` <a class="btn ghost" href="#/track/cpp">C++ wing — unsealed</a>`:""}</p>
       <div class="crumbline">${CRUMB_SVG(30)}<span><b style="color:var(--torch)">Crumb</b> squeaks: ${repoProgressLoaded ? "progress synced from your repo. The dungeon remembers." : "reading local progress — commit with <code>dojo.py</code> and push to make it follow you anywhere."}</span></div>
     </div>
   </div>`;
@@ -576,7 +828,10 @@ function viewHome(){
 function viewTracks(){
   setNav("tracks");
   const cards = TRACKS.map(t=>{
-    const pill = t.status==="ready" ? `<span class="pill ready">active</span>` : `<span class="pill locked">unlocks later</span>`;
+    let pill;
+    if(t.status==="ready") pill = `<span class="pill ready">active</span>`;
+    else if(t.id==="cpp") pill = cppUnlocked() ? `<span class="pill ready">unlocked</span>` : `<span class="pill locked">sealed — clear Python 1–3</span>`;
+    else pill = `<span class="pill locked">unlocks later</span>`;
     const href = t.status==="ready" ? "#/" : `#/track/${t.id}`;
     return `<a class="track-card" href="${href}">${pill}<div class="tname">${t.name}</div><p>${t.desc}</p></a>`;
   }).join("");
@@ -587,8 +842,51 @@ function viewTracks(){
     <div class="tracks-grid">${cards}</div>`;
 }
 
+function viewCppTrack(){
+  setNav("tracks");
+  if(!cppUnlocked()){
+    const p = cppProgressToUnlock();
+    app.innerHTML = `
+      <div style="padding:44px 0 10px;max-width:760px">
+      <div class="eyebrow">the mirror dungeon</div>
+      <h1>The C++ Wing</h1>
+      <p class="lead">Behind this door: the same three floors you're crawling in Python, rebuilt in a language where the compiler tests your code before it runs. Same character creator. Same Rat Fight. Same loot table. Learning them twice is how syntax stops mattering and <em>programming</em> starts.</p>
+      <div class="card" style="margin-top:22px">
+        <span class="pill locked">sealed</span>
+        <h3 style="margin-top:14px">The seal breaks when the Python floors are cleared</h3>
+        <p style="color:var(--muted);font-size:.94rem">Progress: <b style="color:var(--torch)">${p.done}/${p.total}</b> lessons + exercises across Floors 1–3. Every quiz answered, every test green, all three projects built — then this page becomes a descent map.</p>
+        <p style="color:var(--muted);font-size:.9rem;margin-top:10px">The door is honor-locked (it's your dungeon — the terminal has a <code>--force</code> flag and you could read this page's source). But the whole design of the wing assumes the Python reps are in your hands first: the C++ floors teach by <em>contrast</em>, and there's no contrast without the original.</p>
+      </div>
+      <p style="margin-top:18px"><a href="#/tracks">← all tracks</a></p></div>`;
+    return;
+  }
+  const cur = (()=>{ for(const f of CPP_FLOORS){ if(f.status!=="ready") return f.num; if(!floorState(f).cleared) return f.num; } return 10; })();
+  const strata = CPP_FLOORS.map(f=>{
+    const st = floorState(f);
+    const cls = f.status!=="ready" ? "locked-f" : st.cleared ? "cleared" : (f.num===cur ? "current" : "");
+    const state = f.status!=="ready" ? "outline" : st.cleared ? "cleared" : `${st.done}/${st.total}`;
+    const marker = f.num===cur ? CRUMB_SVG(24,'var(--glow)') : "";
+    return `<a class="stratum ${cls}" href="#/floor/c/${f.num}">
+      <span class="fnum">${String(f.num).padStart(2,"0")}</span>
+      <span class="fname">${f.title}<br><span style="font-size:.72rem;color:var(--faint)">${f.theme}</span></span>
+      ${marker}<span class="fstate">${state}</span></a>`;
+  }).join("");
+  app.innerHTML = `
+    <div style="padding:44px 0 10px">
+    <div class="eyebrow glow">c++ track · the iron descent</div>
+    <h1>The C++ Wing</h1>
+    <p class="lead">Unsealed. Same dungeon, colder floors: every system you built in Python, rebuilt where the compiler is the first test. Exercises run through the same dojo — <code>python3 dojo.py check c1-1</code>.</p>
+    <div class="descent" style="max-width:420px;margin-top:24px">
+      <div class="surface-label">▲ back to the warm wing</div>
+      ${strata}
+    </div>
+    <div class="crumbline" style="max-width:560px">${CRUMB_SVG(30)}<span><b style="color:var(--torch)">Crumb</b> squeaks: you already know what these floors teach. Now learn what stays true when the language changes.</span></div>
+    <p style="margin-top:18px"><a href="#/tracks">← all tracks</a></p></div>`;
+}
+
 function viewTrackOutline(id){
   setNav("tracks");
+  if(id==="cpp") return viewCppTrack();
   const t = TRACKS.find(t=>t.id===id);
   if(!t){ location.hash="#/tracks"; return; }
   app.innerHTML = `
@@ -604,10 +902,15 @@ function viewTrackOutline(id){
     <p style="margin-top:18px"><a href="#/tracks">← all tracks</a></p></div>`;
 }
 
-function viewFloor(num){
-  setNav("home");
-  const f = PY_FLOORS[num-1];
-  if(!f){ location.hash="#/"; return; }
+function viewFloor(num, wing="py"){
+  setNav(wing==="cpp" ? "tracks" : "home");
+  const FLOORS = wing==="cpp" ? CPP_FLOORS : PY_FLOORS;
+  const backHref = wing==="cpp" ? "#/track/cpp" : "#/";
+  const backLabel = wing==="cpp" ? "the iron wing" : "the descent";
+  const floorHref = n => wing==="cpp" ? `#/floor/c/${n}` : `#/floor/${n}`;
+  const f = FLOORS[num-1];
+  if(!f){ location.hash=backHref; return; }
+  if(wing==="cpp" && !cppUnlocked()){ location.hash="#/track/cpp"; return; }
   if(f.status!=="ready"){
     app.innerHTML = `
       <div style="padding:44px 0">
@@ -617,9 +920,9 @@ function viewFloor(num){
       <div class="card" style="margin-top:22px"><span class="pill outline">outline — not yet generated</span>
         <h3 style="margin-top:14px">What this floor covers</h3>
         <ul class="plain">${f.outline.map(o=>`<li>${o}</li>`).join("")}</ul>
-        <p style="color:var(--muted);font-size:.9rem;margin-top:12px">When you clear Floor ${num-1}, ask Claude (or Claude Code, pointed at this repo) to <b>generate Floor ${num}</b>: lessons in <code>docs/index.html</code>'s curriculum data, exercises + pytest tests in <code>exercises/floor${String(num).padStart(2,"0")}/</code>, and ids wired into <code>dojo.py</code>'s MANIFEST. The Floor 1–3 files are the template.</p>
+        <p style="color:var(--muted);font-size:.9rem;margin-top:12px">When you clear Floor ${num-1}, ask Claude (or Claude Code, pointed at this repo) to <b>generate Floor ${num}</b>: lessons in <code>docs/index.html</code>'s curriculum data (${wing==="cpp"?"CPP_FLOORS":"PY_FLOORS"}), exercises + tests in <code>exercises/${wing==="cpp"?"cpp/":""}floor${String(num).padStart(2,"0")}/</code>, and ids wired into <code>dojo.py</code>'s MANIFEST. The Floor 1–3 files are the template.</p>
       </div>
-      <p style="margin-top:18px"><a href="#/">← the descent</a></p></div>`;
+      <p style="margin-top:18px"><a href="${backHref}">← ${backLabel}</a></p></div>`;
     return;
   }
   const st = floorState(f);
@@ -654,15 +957,19 @@ python3 dojo.py check ${p.id}     # run the tests
 python3 dojo.py done ${p.id}      # green? save + commit</code></pre>
     </div>
     <div class="lesson-nav">
-      <a href="#/">← the descent</a>
-      ${f.num<10?`<a href="#/floor/${f.num+1}">Floor ${f.num+1} →</a>`:""}
+      <a href="${backHref}">← ${backLabel}</a>
+      ${f.num<10?`<a href="${floorHref(f.num+1)}">Floor ${f.num+1} →</a>`:""}
     </div></div>`;
 }
 
 function viewLesson(id){
-  setNav("home");
+  const wing = id.startsWith("c") ? "cpp" : "py";
+  setNav(wing==="cpp" ? "tracks" : "home");
+  if(wing==="cpp" && !cppUnlocked()){ location.hash="#/track/cpp"; return; }
+  const SEARCH = wing==="cpp" ? CPP_FLOORS : PY_FLOORS;
+  const floorHref = n => wing==="cpp" ? `#/floor/c/${n}` : `#/floor/${n}`;
   let floor=null, lesson=null, idx=-1;
-  for(const f of PY_FLOORS){ if(f.status!=="ready") continue;
+  for(const f of SEARCH){ if(f.status!=="ready") continue;
     const i = f.lessons.findIndex(l=>l.id===id);
     if(i>=0){ floor=f; lesson=f.lessons[i]; idx=i; break; } }
   if(!lesson){ location.hash="#/"; return; }
@@ -684,7 +991,7 @@ function viewLesson(id){
 
   app.innerHTML = `
     <div style="padding:44px 0 10px;max-width:760px">
-    <div class="eyebrow glow">floor ${String(floor.num).padStart(2,"0")} · ${floor.title} · lesson ${id}</div>
+    <div class="eyebrow glow">${wing==="cpp"?"c++ · ":""}floor ${String(floor.num).padStart(2,"0")} · ${floor.title} · lesson ${id}</div>
     <h1 style="font-size:clamp(1.4rem,3.5vw,2rem)">${lesson.title}</h1>
     ${lesson.content}
     ${quizHtml}
@@ -693,8 +1000,8 @@ function viewLesson(id){
       <p class="mono" style="font-size:.75rem;color:var(--faint);margin-top:10px">to save this to your repo: <code>python3 dojo.py lesson ${id}</code> &nbsp;·&nbsp; browser progress saves locally either way</p>
     </div>
     <div class="lesson-nav">
-      <a href="${prev?`#/lesson/${prev.id}`:`#/floor/${floor.num}`}">← ${prev?`${prev.id} ${prev.title}`:floor.title}</a>
-      <a href="${next?`#/lesson/${next.id}`:`#/floor/${floor.num}`}">${next?`${next.id} ${next.title}`:`back to ${floor.title} — the exercises await`} →</a>
+      <a href="${prev?`#/lesson/${prev.id}`:floorHref(floor.num)}">← ${prev?`${prev.id} ${prev.title}`:floor.title}</a>
+      <a href="${next?`#/lesson/${next.id}`:floorHref(floor.num)}">${next?`${next.id} ${next.title}`:`back to ${floor.title} — the exercises await`} →</a>
     </div></div>`;
 
   const answered = new Set();
@@ -836,8 +1143,9 @@ function route(){
   if(h==="#/sync") return viewSync();
   if(h==="#/git") return viewGit();
   if(m = h.match(/^#\/track\/(\w+)$/)) return viewTrackOutline(m[1]);
+  if(m = h.match(/^#\/floor\/c\/(\d+)$/)) return viewFloor(+m[1], "cpp");
   if(m = h.match(/^#\/floor\/(\d+)$/)) return viewFloor(+m[1]);
-  if(m = h.match(/^#\/lesson\/([\d.]+)$/)) return viewLesson(m[1]);
+  if(m = h.match(/^#\/lesson\/(c?[\d.]+)$/)) return viewLesson(m[1]);
   viewHome();
 }
 window.addEventListener("hashchange", route);

@@ -17,6 +17,8 @@ Usage:
 Requires: Python 3.10+, pytest (pip install pytest), git.
 """
 
+from __future__ import annotations  # lets type hints like `list[str] | None` run on Python 3.9
+
 import json
 import subprocess
 import sys
@@ -40,7 +42,22 @@ MANIFEST = {
     "3-2": ("exercises/floor03/ex02_dicts.py",      "exercises/floor03/tests/test_ex02_dicts.py"),
     "3-3": ("exercises/floor03/ex03_slices.py",     "exercises/floor03/tests/test_ex03_slices.py"),
     "3-P": ("exercises/floor03/project_loot.py",    "exercises/floor03/tests/test_project_loot.py"),
+    # --- C++ wing (unlocks after the Python floors above are cleared) ---
+    "c1-1": ("exercises/cpp/floor01/ex01_variables.cpp",   "exercises/cpp/floor01/tests/test_ex01_variables.cpp"),
+    "c1-2": ("exercises/cpp/floor01/ex02_strings.cpp",     "exercises/cpp/floor01/tests/test_ex02_strings.cpp"),
+    "c1-3": ("exercises/cpp/floor01/ex03_numbers.cpp",     "exercises/cpp/floor01/tests/test_ex03_numbers.cpp"),
+    "c1-P": ("exercises/cpp/floor01/project_character.cpp","exercises/cpp/floor01/tests/test_project_character.cpp"),
+    "c2-1": ("exercises/cpp/floor02/ex01_booleans.cpp",    "exercises/cpp/floor02/tests/test_ex01_booleans.cpp"),
+    "c2-2": ("exercises/cpp/floor02/ex02_branching.cpp",   "exercises/cpp/floor02/tests/test_ex02_branching.cpp"),
+    "c2-3": ("exercises/cpp/floor02/ex03_loops.cpp",       "exercises/cpp/floor02/tests/test_ex03_loops.cpp"),
+    "c2-P": ("exercises/cpp/floor02/project_rat_fight.cpp","exercises/cpp/floor02/tests/test_project_rat_fight.cpp"),
+    "c3-1": ("exercises/cpp/floor03/ex01_vectors.cpp",     "exercises/cpp/floor03/tests/test_ex01_vectors.cpp"),
+    "c3-2": ("exercises/cpp/floor03/ex02_maps.cpp",        "exercises/cpp/floor03/tests/test_ex02_maps.cpp"),
+    "c3-3": ("exercises/cpp/floor03/ex03_iteration.cpp",   "exercises/cpp/floor03/tests/test_ex03_iteration.cpp"),
+    "c3-P": ("exercises/cpp/floor03/project_loot.cpp",     "exercises/cpp/floor03/tests/test_project_loot.cpp"),
 }
+
+PYTHON_IDS = [k for k in MANIFEST if not k.startswith("c")]
 
 ORDER = list(MANIFEST.keys())
 
@@ -67,13 +84,58 @@ def save_progress(progress: dict) -> None:
         f.write("\n")
 
 
+FORCE = False
+
+
+def python_wing_cleared() -> bool:
+    done = set(load_progress().get("exercises", []))
+    return all(pid in done for pid in PYTHON_IDS)
+
+
+def find_cpp_compiler() -> str | None:
+    import shutil
+    for c in ("c++", "clang++", "g++"):
+        if shutil.which(c):
+            return c
+    return None
+
+
 def run_tests(ex_id: str) -> bool:
     if ex_id not in MANIFEST:
         print(f"{RED}Unknown exercise id: {ex_id}{RESET}")
         print(f"Known ids: {', '.join(ORDER)}")
         sys.exit(1)
+
+    # The C++ wing unlocks after the Python floors are cleared.
+    if ex_id.startswith("c") and not python_wing_cleared() and not FORCE:
+        remaining = [p for p in PYTHON_IDS if p not in set(load_progress().get("exercises", []))]
+        print(f"{AMBER}The C++ wing is sealed.{RESET} Clear the Python floors first "
+              f"({len(remaining)} exercise(s) remaining: {', '.join(remaining)}).")
+        print(f"{DIM}Truly stuck on Python and want a peek anyway? "
+              f"python3 dojo.py check {ex_id} --force{RESET}")
+        return False
+
     _, test_file = MANIFEST[ex_id]
     print(f"{DIM}Running {test_file}…{RESET}\n")
+
+    if test_file.endswith(".cpp"):
+        compiler = find_cpp_compiler()
+        if compiler is None:
+            print(f"{RED}No C++ compiler found.{RESET} On macOS run: xcode-select --install")
+            return False
+        binary = ROOT / ".devcrawl_test_bin"
+        compile_result = subprocess.run(
+            [compiler, "-std=c++17", "-Wall", "-o", str(binary), str(ROOT / test_file)],
+            cwd=ROOT,
+        )
+        if compile_result.returncode != 0:
+            print(f"\n{RED}Compile failed — in C++ the compiler is the first test.{RESET}")
+            print(f"{DIM}Read the FIRST error top-down; later errors are often echoes of it.{RESET}")
+            return False
+        run_result = subprocess.run([str(binary)], cwd=ROOT)
+        binary.unlink(missing_ok=True)
+        return run_result.returncode == 0
+
     result = subprocess.run(
         [sys.executable, "-m", "pytest", str(ROOT / test_file), "-v", "--no-header"],
         cwd=ROOT,
@@ -103,7 +165,7 @@ def cmd_status() -> None:
     done_ls = set(progress.get("lessons", []))
     print(f"\n{MAGENTA}═══ DEVCRAWL — your descent ═══{RESET}\n")
     print(f"Lessons cleared:   {len(done_ls)}")
-    print(f"Exercises green:   {len(done_ex)}/{len(MANIFEST)} (floors 1–3 wired so far)\n")
+    print(f"Exercises green:   {len(done_ex)}/{len(MANIFEST)} (Python 1–3 + C++ 1–3 wired)\n")
     for ex_id in ORDER:
         mark = f"{GREEN}✔{RESET}" if ex_id in done_ex else f"{DIM}·{RESET}"
         label = "PROJECT" if ex_id.endswith("P") else "exercise"
@@ -165,7 +227,9 @@ def cmd_push() -> None:
 
 
 def main() -> None:
-    args = sys.argv[1:]
+    global FORCE
+    args = [a for a in sys.argv[1:] if a != "--force"]
+    FORCE = "--force" in sys.argv
     if not args:
         print(__doc__)
         return
