@@ -21,21 +21,21 @@ torch_lit = False
 # is_hurt        -> True when hp is below max
 # is_critical    -> True when hp is at or below 25% of max (use <=)
 # TODO:
-is_hurt = ...
-is_critical = ...
+is_hurt = player_hp < player_max_hp
+is_critical = player_hp <= player_max_hp * 0.25
 
 # --- Part 2: combining ---------------------------------------------------------
 # can_open_door  -> True when the player has the key AND the door is locked
 #                   (opening an unlocked door needs no key logic)
 # should_retreat -> True when critical AND out of potions
 # TODO:
-can_open_door = ...
-should_retreat = ...
+can_open_door = has_key and door_locked
+should_retreat = is_critical and potions == 0 
 
 # --- Part 3: `not`, and the dark ------------------------------------------------
 # in_darkness    -> True when the torch is NOT lit and depth is greater than 1
 # TODO:
-in_darkness = ...
+in_darkness = not torch_lit and depth > 1
 
 # --- Part 4: spot the trap -------------------------------------------------------
 # A previous adventurer wrote:   fatal = player_hp == 0 or -1
@@ -44,4 +44,4 @@ in_darkness = ...
 # Write it correctly: fatal is True when hp is 0 OR hp is -1... but the
 # robust version every game uses is simply "hp is 0 or below".
 # TODO:
-fatal = ...
+fatal = player_hp <= 0
