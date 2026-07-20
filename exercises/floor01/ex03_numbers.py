@@ -38,7 +38,7 @@ gold_leftover = gold_found % party_size
 # Compute is_monster_turn as a boolean using % and == (no if statements yet —
 # a comparison already produces True/False).
 # TODO:
-is_monster_turn = turn_number % 2 
+is_monster_turn = turn_number % 2 == 1
 
 # --- Part 4: crit! -------------------------------------------------------------
 # A critical hit squares the strength modifier and adds it to total_damage.
