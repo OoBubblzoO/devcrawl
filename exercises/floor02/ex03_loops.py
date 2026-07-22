@@ -35,6 +35,7 @@ def total_xp_to_reach(level):
     xp = 0 
     for current_lvl in range(1, level):
         xp = xp + current_lvl * 100
+        print(f"Level {current_lvl} costs {current_lvl * 100} XP, total: {xp}")
     return xp
 
 
