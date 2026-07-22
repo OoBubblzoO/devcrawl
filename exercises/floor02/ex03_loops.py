@@ -16,7 +16,11 @@ def turns_to_defeat(monster_hp, damage_per_turn):
     (Yes, math could do it — but this is the skeleton of your combat loop.)
     """
     # TODO
-    ...
+    turns = 0
+    while monster_hp > 0:
+        monster_hp -= damage_per_turn
+        turns += 1
+    return turns
 
 
 def total_xp_to_reach(level):
@@ -28,7 +32,10 @@ def total_xp_to_reach(level):
         level 4 -> 600
     """
     # TODO
-    ...
+    xp = 0 
+    for current_lvl in range(1, level):
+        xp = xp + current_lvl * 100
+    return xp
 
 
 def torch_countdown(turns):
@@ -38,4 +45,9 @@ def torch_countdown(turns):
     then add "darkness." at the end.
     """
     # TODO
-    ...
+    darkness = ""
+    for count in range(turns, 0, -1):
+        darkness += f"{count}... "
+    darkness += "darkness."
+    # print(darkness)
+    return darkness
