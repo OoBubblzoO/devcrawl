@@ -15,13 +15,18 @@ Save: python3 dojo.py done 2-P
 def attack(attacker_power, defender_hp):
     """One attack lands. Return the defender's new hp (can go below 0)."""
     # TODO
-    ...
+    
+    defender_hp -= attacker_power
+    return defender_hp
 
 
 def is_defeated(hp):
     """Return True when hp is 0 or below."""
     # TODO
-    ...
+    if hp <= 0:
+        return True
+    else:
+        return False
 
 
 def fight(player_hp, player_power, rat_hp, rat_power):
@@ -38,6 +43,21 @@ def fight(player_hp, player_power, rat_hp, rat_power):
     """
     # TODO
     ...
+    winner = ""
+    while player_hp > 0 and rat_hp > 0:
+        rat_hp = attack(player_power, rat_hp)
+        if is_defeated(rat_hp):
+            print(f"{rat_hp}... The rat is defeated!")
+            winner = "player"
+        else:
+            print(f"{rat_hp}... The rat lives...")
+            player_hp = attack(rat_power, player_hp)
+            if is_defeated(player_hp):
+                print(f"{player_hp}... The player is defeated!")
+                winner = "rat"
+    return winner
+    
+    
 
 
 def fight_report(player_hp, player_power, rat_hp, rat_power):
@@ -49,7 +69,21 @@ def fight_report(player_hp, player_power, rat_hp, rat_power):
     is fine here. On Floor 4 you'll learn how to avoid the duplication.
     """
     # TODO
-    ...
+    turns = 0
+    winner = ""
+    while player_hp > 0 and rat_hp > 0:
+        rat_hp = attack(player_power, rat_hp)
+        if is_defeated(rat_hp):
+            print(f"{rat_hp}... The rat is defeated!")
+            winner = "player"
+        else:
+            print(f"{rat_hp}... The rat lives...")
+            player_hp = attack(rat_power, player_hp)
+            if is_defeated(player_hp):
+                print(f"{player_hp}... The player is defeated!")
+                winner = "rat"
+        turns += 1
+    return f"{winner} wins after {turns} rounds"
 
 
 if __name__ == "__main__":
