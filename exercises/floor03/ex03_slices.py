@@ -18,6 +18,12 @@ def top_three(scores):
     """
     # TODO
     ...
+    if len(scores) > 3:
+        top_scores = sorted(scores, reverse=True)[:3]
+        # print(top_scores[:3])
+        return top_scores
+    return scores
+
 
 
 def recent_log(log, n):
@@ -28,6 +34,7 @@ def recent_log(log, n):
     """
     # TODO
     ...
+    return log[-n::]
 
 
 def count_rarities(items):
@@ -38,7 +45,12 @@ def count_rarities(items):
     """
     # TODO
     ...
-
+    rarities = {}
+    for rarity in items:
+        # print(rarity)
+        rarities[rarity] = rarities.get(rarity, 0) + 1
+    print(rarities)
+    return rarities
 
 def every_other_tile(tiles):
     """The rave-basement floor strobes: return every second tile starting
@@ -47,3 +59,4 @@ def every_other_tile(tiles):
     """
     # TODO
     ...
+    return tiles[::2]
