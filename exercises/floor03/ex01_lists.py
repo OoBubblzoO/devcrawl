@@ -14,7 +14,8 @@ def add_item(inventory, item):
     """Add item to the END of the inventory, then return the inventory."""
     # TODO
     ...
-
+    inventory.append(item)
+    return inventory
 
 def drop_item(inventory, item):
     """Remove the FIRST matching item if present, then return the inventory.
@@ -23,12 +24,18 @@ def drop_item(inventory, item):
     """
     # TODO
     ...
+    if item in inventory:
+        inventory.remove(item)
+    return inventory
 
 
 def has_item(inventory, item):
     """Return True if the item is in the inventory."""
     # TODO
-    ...
+    if item in inventory: 
+        return True
+    return False
+    
 
 
 def newest_item(inventory):
@@ -37,3 +44,6 @@ def newest_item(inventory):
     """
     # TODO
     ...
+    if inventory == []:
+        return None
+    return inventory[-1]
