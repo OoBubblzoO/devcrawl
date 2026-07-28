@@ -23,8 +23,8 @@ def item_damage(item_name):
     square brackets. (KeyError crashes on unknown keys are a classic.)
     """
     # TODO
-    ...
-
+    item_stat = ITEM_STATS.get(item_name, {}).get("damage", 0)
+    return item_stat
 
 def is_edible(item_name):
     """Return True if the item has a "heals" stat.
@@ -33,6 +33,15 @@ def is_edible(item_name):
     """
     # TODO
     ...
+    print(f"ITEM NAME: {item_name}")
+    # Check if the item exists in ITEM_STATS and if it has a "heals" key
+    # get the item stats dictionary for the given item_name, defaulting to an empty dict if not found
+    if "heals" in ITEM_STATS.get(item_name, {}):
+        print(f"THERES HEALS")
+        return True
+    return False
+        
+    
 
 
 def price_list():
@@ -41,7 +50,11 @@ def price_list():
     Loop over ITEM_STATS.items() and build it up.
     """
     # TODO
-    ...
+    item_names = {}
+    for name, stats in ITEM_STATS.items():
+        item_names[name] = stats.get("value", 0)
+    print(item_names)
+    return item_names
 
 
 def most_valuable():
@@ -51,3 +64,9 @@ def most_valuable():
     """
     # TODO
     ...
+
+    highest_item = max(ITEM_STATS, key=lambda name: ITEM_STATS[name]["value"])
+    return highest_item
+    
+
+    
