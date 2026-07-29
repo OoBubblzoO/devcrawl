@@ -31,7 +31,15 @@ def make_character(name):
     """
     # TODO: build the dict and return it
     ...
-
+    character = {
+        "name": name,
+        "hp": STARTING_HP,
+        "max_hp": STARTING_HP,
+        "level": STARTING_LEVEL,
+        "gold": STARTING_GOLD
+    }
+    print(character)
+    return character
 
 def status_line(character):
     """Return the HUD string for a character dict, EXACTLY in this shape:
@@ -43,7 +51,8 @@ def status_line(character):
     """
     # TODO
     ...
-
+    HUD = f"{character['name']} | Lv {character['level']} | HP {character['hp']}/{character['max_hp']} | {character['gold']}g"
+    return HUD
 
 def level_up(character):
     """Level the character up, then return the (same) dict.
@@ -55,6 +64,11 @@ def level_up(character):
     """
     # TODO
     ...
+    character['level'] += 1
+    character['max_hp'] += 5
+    character['hp'] = character['max_hp']
+    print(f"character health has been restored to {character['hp']}... matching {character['max_hp']}")
+    return character
 
 
 if __name__ == "__main__":
