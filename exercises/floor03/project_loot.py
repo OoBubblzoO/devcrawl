@@ -26,8 +26,13 @@ def roll_loot(roll):
     """
     # TODO
     ...
-
-
+    for entry in LOOT_TABLE:
+            if entry['max_roll'] >= roll:
+                print(f"ROLL IS Lower than max_roll")
+                looted_item = entry["item"]
+                print(looted_item)
+                break
+    return looted_item
 def add_to_pack(pack, item):
     """The pack is a STACKING inventory — a dict of item -> count.
     Add one of `item` and return the pack.
@@ -38,6 +43,12 @@ def add_to_pack(pack, item):
     # TODO
     ...
 
+    print(f"adding {item} to inventory...")
+    # make sure to include assignment
+    pack[item] = pack.get(item, 0) + 1
+    print(pack)
+    return pack
+
 
 def open_chest(pack, rolls):
     """A chest gives several rolls at once. For each roll in `rolls`,
@@ -47,7 +58,11 @@ def open_chest(pack, rolls):
     """
     # TODO
     ...
-
+    for roll in rolls:
+        item = roll_loot(roll)
+        print(f"you rolled a {item}!")
+        add_to_pack(pack, item)
+    return pack 
 
 def pack_report(pack):
     """Return the pack as display lines, ALPHABETICAL by item, one string:
@@ -58,3 +73,12 @@ def pack_report(pack):
     """
     # TODO
     ...
+    # sort will sort by alphabet 
+    backpack = ""
+    for item, count in sorted(pack.items()):
+        backpack += f"{item} x{count}\n"
+    if not backpack:
+        backpack = "(empty)"
+    print(backpack)
+    return backpack.strip()
+    
