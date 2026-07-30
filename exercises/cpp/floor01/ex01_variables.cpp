@@ -14,10 +14,10 @@
 // C++ variables MUST declare a type, and names can't start with a digit.
 
 // TODO: this one is missing its type (it should be an int):
-torch_count = 3;
+int torch_count = 3;
 
 // TODO: this name is illegal — rename to first_weapon (keep the value):
-std::string 1st_weapon = "rusty sword";
+std::string first_weapon = "rusty sword";
 
 
 // --- Part 2: create your character ------------------------------------------
@@ -28,6 +28,11 @@ std::string 1st_weapon = "rusty sword";
 //   is_alive     -> bool, true      (lowercase true — this isn't Python!)
 
 // TODO: your four variables here
+std::string player_name = "Crumb";
+int player_hp = 30;
+int player_level = 1;
+bool is_alive = true;
+
 
 
 // --- Part 3: const -----------------------------------------------------------
@@ -37,6 +42,7 @@ std::string 1st_weapon = "rusty sword";
 // The compiler refuses — that refusal is a feature. Delete the bad line after.
 
 // TODO: STARTING_GOLD here
+const int STARTING_GOLD = 10;
 
 
 // --- Part 4: reassignment ------------------------------------------------------
@@ -46,5 +52,6 @@ std::string 1st_weapon = "rusty sword";
 
 int heal_check() {
     // TODO: add 5 to player_hp, then return player_hp
-    return 0;
+    player_hp += 5;
+    return player_hp;
 }
