@@ -20,7 +20,8 @@ int depth = 2;
 // gluing an int onto a string directly won't compile (try it, read the error).
 std::string make_hud() {
     // TODO
-    return "";
+    std::string HUD = player_name + " | HP " + std::to_string(player_hp) + "/" + std::to_string(player_max_hp) + " | Floor " + std::to_string(depth); 
+    return HUD;
 }
 
 // --- Part 2: shouting ------------------------------------------------------------
@@ -30,12 +31,14 @@ std::string make_hud() {
 #include <cctype>
 std::string shout(std::string msg) {
     // TODO: for (char& c : msg) { ... }   then return msg
-    return "";
+    for (char& c: msg) c = toupper(c);
+    return msg;
 }
 
 // --- Part 3: the popup ------------------------------------------------------------
 // Return: You take 7 damage!   (for damage=7 — use the parameter, not a literal 7)
 std::string damage_popup(int damage) {
     // TODO
-    return "";
+    std::string message = "You take " + std::to_string(damage) + " damage!";
+    return message;
 }
