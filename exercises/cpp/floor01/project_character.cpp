@@ -27,14 +27,22 @@ struct Character {
 // (or brace-init in one line: return {name, STARTING_HP, ...} — field order!)
 Character make_character(std::string name) {
     // TODO
-    return {};
+    Character c;
+    c.name = name;
+    c.hp = STARTING_HP;
+    c.max_hp = STARTING_HP;
+    c.level = 1;
+    c.gold = STARTING_GOLD;
+
+    return {c.name, c.hp, c.max_hp, c.level, c.gold};
 }
 
 // Return EXACTLY:  Crumb | Lv 1 | HP 30/30 | 10g
 // (std::to_string for every number)
 std::string status_line(Character c) {
     // TODO
-    return "";
+    std::string HUD = c.name + " | " + "Lv " + std::to_string(c.level) + " | " + "HP " + std::to_string(c.hp) + "/" + std::to_string(c.max_hp) + " | " + std::to_string(c.gold) + "g";
+    return HUD;
 }
 
 // Level up the character: level +1, max_hp +5, hp restored to new max.
@@ -42,5 +50,7 @@ std::string status_line(Character c) {
 // Without it you'd level up a copy, the original stays weak, and you'd
 // hunt that bug for an hour. (Python's dicts behaved this way for free.)
 void level_up(Character& c) {
-    // TODO
+    c.level += 1;
+    c.max_hp += 5;
+    c.hp = c.max_hp;
 }
