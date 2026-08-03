@@ -14,26 +14,36 @@
 
 // Add to the END:  inv.push_back(item)
 void add_item(std::vector<std::string>& inv, std::string item) {
-    // TODO
+    inv.push_back(item);
+    inv.size();
+
+    // Don't make an extra variable ? Was having issue making variable = inv (referencing issue)
 }
 
 // Remove the FIRST match if present; missing items are a safe no-op.
 // The C++ incantation:
 //   auto it = std::find(inv.begin(), inv.end(), item);
 //   if (it != inv.end()) inv.erase(it);
+// it = iterator
 void drop_item(std::vector<std::string>& inv, std::string item) {
     // TODO
+    auto it = std::find(inv.begin(), inv.end(), item);
+    if (it != inv.end()) inv.erase(it);
 }
 
 // Is it in there? std::find + compare against end().
 bool has_item(const std::vector<std::string>& inv, std::string item) {
-    // TODO
+    auto it = std::find(inv. begin(), inv.end(), item);
+    if (it != inv.end()) return true;
     return false;
 }
 
 // Most recently added, or "" for empty. inv.back() on an EMPTY vector is
 // undefined behavior — C++ won't even crash politely. Guard with .empty().
 std::string newest_item(const std::vector<std::string>& inv) {
-    // TODO
-    return "?";
+    
+    if (inv.empty()){
+        return "";
+    }
+    return inv.back();
 }
